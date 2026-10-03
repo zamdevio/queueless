@@ -1,0 +1,9 @@
+---
+description: Point agents at root AGENT.md and maintainer control plane
+alwaysApply: true
+---
+
+# Entry
+
+Read root `AGENT.md` first, then `maintainer/phases/focus.md`.
+`maintainer/temp/` is scratch (gitignored). Do not invent apps/packages that were not scaffolded.

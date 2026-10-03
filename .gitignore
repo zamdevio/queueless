@@ -1,0 +1,13 @@
+node_modules/
+dist/
+**/dist/
+**/.wrangler/
+*.log
+.DS_Store
+.tsbuildinfo
+.env
+.env.*
+.dev.vars
+maintainer/temp/**
+!maintainer/temp/
+!maintainer/temp/.gitkeep

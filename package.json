@@ -1,0 +1,27 @@
+{
+  "name": "queue-less",
+  "private": true,
+  "version": "0.0.0",
+  "description": "QueueLess",
+  "type": "module",
+  "packageManager": "pnpm@12.5.1",
+  "scripts": {
+    "build": "pnpm -r --if-present run build",
+    "typecheck": "pnpm -r --if-present run typecheck",
+    "test": "pnpm -r --if-present run test",
+    "knip": "knip",
+    "web:dev": "pnpm --filter @queueless/web dev",
+    "web:build": "pnpm --filter @queueless/web build",
+    "web:preview": "pnpm --filter @queueless/web preview",
+    "worker:dev": "pnpm --filter @queueless/worker dev",
+    "worker:deploy": "pnpm --filter @queueless/worker deploy",
+    "worker:typecheck": "pnpm --filter @queueless/worker typecheck"
+  },
+  "devDependencies": {
+    "knip": "^6.12.0",
+    "typescript": "^5.8.3"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
