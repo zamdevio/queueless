@@ -4,6 +4,7 @@ dist/
 **/.wrangler/
 *.log
 .DS_Store
+*.tsbuildinfo
 .tsbuildinfo
 .env
 .env.*
