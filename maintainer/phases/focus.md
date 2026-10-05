@@ -11,31 +11,28 @@
 
 | Priority | Vertical | Notes |
 |----------|----------|-------|
-| 1 | Architecture lock | Decisions **1–6 closed** — SSE + HTTP, Hono, DO, D1, accounts, `queueId` |
-| 2 | Course Assignment 1 | Keep proposal aligned with locked stack |
-| 3 | Impl readiness | Green-light one first slice (auth *or* queue DO+SSE) — not both at once |
+| 1 | Queue DO + SSE + HTTP | **Slice 1 shipped** — demoable queue API |
+| 2 | Web SPA UI | Wire up to the API — student join + operator dashboard |
+| 3 | Auth (later) | Staff accounts/roles — gate operator side |
 
 ## Queued — do not start
 
 | # | Item | Why parked |
 |---|------|------------|
-| 1 | Auth accounts + roles | In MVP scope; wait for green light |
-| 2 | D1 ticket schema + migrations | Full store; needs `queueId` model |
-| 3 | Durable Object queue actor + SSE | One DO per `queueId`; HTTP mutations via Hono |
-| 4 | Customer MVP (join / status / ETA / leave) | Depends on queue actor + store |
-| 5 | Operator MVP (call next / skip / remove / reset) | Needs auth + queue actor |
-| 6 | Rolling-average ETA | Needs serve timestamps |
-| 7 | Multi-counter / multi-location / billing | Stretch (multi-*queue* is in) |
-| 8 | Production CF deploy + real D1 id | Not Assignment 1 |
+| 1 | D1 ticket schema | DO holds live state; add D1 for history after UI demo |
+| 2 | ETA | Needs serve timestamps from call-next |
+| 3 | Staff accounts / roles | Gate operator side (skip/remove/reset) |
+| 4 | Production CF deploy | Not Assignment 1 |
 
 ## Next task
 
-1. On green light: promote **one** impl vertical (auth skeleton *or* DO + `queueId` + SSE skeleton).
-2. Keep worker on **Hono**; mutations HTTP; live board SSE.
+1. Build Web SPA that consumes the API (student join + operator dashboard).
+2. Demo: student joins → sees position → staff calls next.
+3. Then promote auth or ETA based on what the demo reveals.
 
 ## Do not
 
 - Start both auth and queue actor in parallel without Focus room
 - Reintroduce WebSocket unless a later need forces it
-- Collect customer PII by default
+- Collect student PII by default
 - Deploy production CF for the course idea phase alone

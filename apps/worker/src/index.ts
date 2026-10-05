@@ -1,7 +1,10 @@
 import { Hono } from "hono";
+import queueRoutes from "./routes/queue";
+import streamRoutes from "./routes/stream";
 
 export type Env = {
   DB: D1Database;
+  QUEUE_DO: DurableObjectNamespace;
   ENVIRONMENT: string;
 };
 
@@ -24,5 +27,8 @@ app.get("/health", async (c) => {
     return c.json({ ok: false, db: "down", message }, 503);
   }
 });
+
+app.route("/", queueRoutes);
+app.route("/", streamRoutes);
 
 export default app;
