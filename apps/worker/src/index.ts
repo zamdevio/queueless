@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import queueRoutes from "./routes/queue";
 import streamRoutes from "./routes/stream";
+import { QueueDO } from "./do/QueueDO";
 
 export type Env = {
   DB: D1Database;
@@ -32,3 +33,5 @@ app.route("/", queueRoutes);
 app.route("/", streamRoutes);
 
 export default app;
+
+export { QueueDO };
