@@ -1,13 +1,17 @@
 import { useState, useEffect } from "react";
+import { ThemeProvider } from "./lib/theme";
+import { Sidebar } from "./components/Sidebar";
+import { LandingView } from "./views/LandingView";
 import { StudentView } from "./views/StudentView";
 import { OperatorView } from "./views/OperatorView";
 
-export function App() {
+type View = "landing" | "student" | "operator";
+
+function AppContent() {
   const [queueId, setQueueId] = useState<string | null>(null);
-  const [view, setView] = useState<"student" | "operator" | "landing">("landing");
+  const [view, setView] = useState<View>("landing");
 
   useEffect(() => {
-    // Parse URL hash for routing: #/student/queueId or #/operator/queueId
     const hash = window.location.hash;
     const studentMatch = hash.match(/^#\/student\/(.+)$/);
     const operatorMatch = hash.match(/^#\/operator\/(.+)$/);
@@ -19,61 +23,33 @@ export function App() {
       setQueueId(operatorMatch[1]);
       setView("operator");
     } else {
-      setQueueId(null);
+      setQueueId("demo");
       setView("landing");
     }
   }, []);
 
-  function navigateTo(view: "student" | "operator", queueId: string) {
+  function navigateTo(view: View, queueId: string) {
     window.location.hash = `/#/${view}/${queueId}`;
     setView(view);
     setQueueId(queueId);
   }
 
-  if (view === "landing") {
-    return (
-      <div className="landing">
-        <h1>QueueLess</h1>
-        <p>Digital queue management for campus services</p>
+  return (
+    <div className="app-layout">
+      <Sidebar currentView={view} queueId={queueId || "demo"} onNavigate={navigateTo} />
+      <main className="main-content">
+        {view === "landing" && <LandingView onNavigate={navigateTo} />}
+        {view === "student" && queueId && <StudentView queueId={queueId} />}
+        {view === "operator" && queueId && <OperatorView queueId={queueId} />}
+      </main>
+    </div>
+  );
+}
 
-        <div className="actions">
-          <div>
-            <label htmlFor="queueId">Queue ID:</label>
-            <input
-              id="queueId"
-              type="text"
-              placeholder="e.g. library-desk"
-              defaultValue="demo"
-            />
-          </div>
-          <button onClick={() => navigateTo("student", "demo")}>
-            Join as student
-          </button>
-          <button onClick={() => navigateTo("operator", "demo")}>
-            Open operator dashboard
-          </button>
-        </div>
-
-        <div className="links">
-          <p>Or use direct links:</p>
-          <a href="#/student/demo">Student view (demo)</a>
-          <a href="#/operator/demo">Operator view (demo)</a>
-        </div>
-      </div>
-    );
-  }
-
-  if (!queueId) {
-    return <div className="error">Queue ID not found</div>;
-  }
-
-  if (view === "student") {
-    return <StudentView queueId={queueId} />;
-  }
-
-  if (view === "operator") {
-    return <OperatorView queueId={queueId} />;
-  }
-
-  return null;
+export function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
+  );
 }

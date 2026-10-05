@@ -36,4 +36,10 @@ export default app;
 
 export { QueueDO };
 
-export const fetch = app.fetch;
+export async function fetch(
+  request: Request,
+  env: Env,
+  ctx: ExecutionContext
+): Promise<Response> {
+  return app.fetch(request, env, ctx);
+}
