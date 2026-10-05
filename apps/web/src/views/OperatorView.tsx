@@ -10,7 +10,7 @@ import {
   applyEvent,
   errMessage,
   errRetryable,
-  logoutOperator,
+  isUnauthorized,
   type Board,
   type QueueEvent,
 } from "../lib/api";
@@ -20,11 +20,23 @@ import { OperatorLogin } from "./OperatorLogin";
 import { toast } from "sonner";
 
 export function OperatorView({ queueId }: { queueId: string }) {
-  const { isOperator, loading: authLoading, logout } = useAuth();
+  const { isOperator, loading: authLoading, logout, resetSession } = useAuth();
   const [board, setBoard] = useState<Board | null>(null);
   const [error, setError] = useState<{ message: string; retryable: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
   const [maxInput, setMaxInput] = useState("");
+
+  const handleAuthFailure = useCallback(
+    (err: unknown) => {
+      if (isUnauthorized(err)) {
+        resetSession();
+        toast.error("Session expired — please sign in again.");
+        return true;
+      }
+      return false;
+    },
+    [resetSession]
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -34,6 +46,10 @@ export function OperatorView({ queueId }: { queueId: string }) {
       setBoard(boardData);
       setMaxInput(String(boardData.settings?.maxWaiting ?? 50));
     } catch (err) {
+      if (handleAuthFailure(err)) {
+        setLoading(false);
+        return;
+      }
       setError({
         message: errMessage(err, "Failed to load queue."),
         retryable: errRetryable(err),
@@ -41,7 +57,7 @@ export function OperatorView({ queueId }: { queueId: string }) {
     } finally {
       setLoading(false);
     }
-  }, [queueId]);
+  }, [queueId, handleAuthFailure]);
 
   useEffect(() => {
     let disposed = false;
@@ -66,6 +82,7 @@ export function OperatorView({ queueId }: { queueId: string }) {
   }, [queueId, load]);
 
   function reportError(err: unknown) {
+    if (handleAuthFailure(err)) return;
     setError({
       message: errMessage(err, "Action failed."),
       retryable: errRetryable(err),
@@ -134,7 +151,7 @@ export function OperatorView({ queueId }: { queueId: string }) {
       await logout();
       toast.success("Signed out");
     } catch {
-      await logoutOperator().catch(() => {});
+      resetSession();
     }
   }
 

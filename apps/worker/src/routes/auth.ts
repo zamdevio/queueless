@@ -2,7 +2,6 @@ import { Hono } from "hono";
 import {
   clientIp,
   clearLoginFailures,
-  getOperatorCookie,
   loginRateLimited,
   pinMatches,
   recordLoginFailure,
@@ -46,7 +45,7 @@ auth.post("/login", async (c) => {
   clearLoginFailures(ip);
   const token = await signSession(c.env);
   c.header("Set-Cookie", sessionCookie(token), { append: true });
-  return c.json({ ok: true });
+  return c.json({ ok: true, token });
 });
 
 auth.post("/logout", (c) => {
@@ -55,8 +54,7 @@ auth.post("/logout", (c) => {
 });
 
 auth.get("/me", async (c) => {
-  const token = getOperatorCookie(c.req.header("Cookie"));
-  const ok = await verifySession(c.env, token);
+  const ok = await verifySession(c.env, c.req.raw);
   if (!ok) return c.json({ ok: false, error: "Not authenticated" }, 401);
   return c.json({ ok: true, role: "operator" });
 });

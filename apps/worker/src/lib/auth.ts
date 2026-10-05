@@ -1,4 +1,4 @@
-/* Operator session cookie + PIN login rate limit */
+/* Operator session token + PIN login rate limit */
 
 export type Env = {
   DB: D1Database;
@@ -8,12 +8,11 @@ export type Env = {
   SESSION_SECRET?: string;
 };
 
-const COOKIE_NAME = "ql_op_session";
+export const COOKIE_NAME = "ql_op_session";
 const SESSION_TTL_S = 12 * 60 * 60; // 12h
 const LOGIN_WINDOW_MS = 60_000;
 const LOGIN_MAX = 10;
 
-/** Per-isolate IP → timestamps of failed login attempts. */
 const loginHits = new Map<string, number[]>();
 
 function pinKey(env: Env): string {
@@ -36,12 +35,15 @@ function encodeSession(exp: number): string {
   return `${exp}.${crypto.randomUUID()}`;
 }
 
-export function parseCookies(header: string | undefined): Record<string, string> {
+export function parseCookies(header: string | undefined | null): Record<string, string> {
   const out: Record<string, string> = {};
   if (!header) return out;
   for (const part of header.split(";")) {
-    const [k, ...v] = part.trim().split("=");
-    if (k) out[k] = decodeURIComponent(v.join("="));
+    const eq = part.indexOf("=");
+    if (eq < 0) continue;
+    const k = part.slice(0, eq).trim();
+    if (!k) continue;
+    out[k] = decodeURIComponent(part.slice(eq + 1).trim());
   }
   return out;
 }
@@ -52,36 +54,47 @@ export async function signSession(env: Env): Promise<string> {
   return `${payload}.${sig}`;
 }
 
-export async function verifySession(env: Env, cookie: string | undefined): Promise<boolean> {
-  if (!cookie) return false;
-  const parts = cookie.split(".");
+export async function verifySessionToken(
+  env: Env,
+  token: string | null | undefined
+): Promise<boolean> {
+  if (token == null || token === "") return false;
+  const parts = String(token).split(".");
   if (parts.length !== 3) return false;
   const [expStr, , sig] = parts;
   const exp = Number(expStr);
   if (!Number.isFinite(exp) || exp * 1000 < Date.now()) return false;
   const expected = await hmacSign(pinKey(env), `${expStr}.${parts[1]}`);
-  // constant-ish compare
   if (expected.length !== sig.length) return false;
   let diff = 0;
   for (let i = 0; i < expected.length; i++) diff |= expected.charCodeAt(i) ^ sig.charCodeAt(i);
   return diff === 0;
 }
 
-export function sessionCookie(value: string | null): string {
-  if (value === null) {
-    return `${COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0`;
+/** Prefer Authorization: Bearer (cross-origin pages.dev → workers.dev); cookie fallback. */
+export async function verifySession(env: Env, request: Request): Promise<boolean> {
+  const authHeader = request.headers.get("Authorization") ?? "";
+  const bearer = authHeader.startsWith("Bearer ")
+    ? authHeader.slice(7).trim()
+    : null;
+  if (bearer) {
+    return verifySessionToken(env, bearer);
   }
-  return `${COOKIE_NAME}=${value}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${SESSION_TTL_S}`;
+  const cookieHeader = request.headers.get("Cookie");
+  const cookies = parseCookies(cookieHeader);
+  return verifySessionToken(env, cookies[COOKIE_NAME] ?? null);
 }
 
-export function getOperatorCookie(header: string | undefined): string | undefined {
-  return parseCookies(header)[COOKIE_NAME];
+export function sessionCookie(value: string | null): string {
+  if (value === null) {
+    return `${COOKIE_NAME}=; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=0`;
+  }
+  return `${COOKIE_NAME}=${value}; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=${SESSION_TTL_S}`;
 }
 
 export function loginRateLimited(ip: string): { limited: boolean; retryAfterSec: number } {
   const now = Date.now();
-  const windowStart = now - LOGIN_WINDOW_MS;
-  const hits = (loginHits.get(ip) || []).filter((t) => t > windowStart);
+  const hits = (loginHits.get(ip) || []).filter((t) => t > now - LOGIN_WINDOW_MS);
   if (hits.length >= LOGIN_MAX) {
     const retryAfterSec = Math.ceil((hits[0] + LOGIN_WINDOW_MS - now) / 1000);
     return { limited: true, retryAfterSec: Math.max(retryAfterSec, 1) };

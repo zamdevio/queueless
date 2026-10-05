@@ -1,10 +1,5 @@
 import { Hono } from "hono";
-import {
-  clientIp,
-  getOperatorCookie,
-  verifySession,
-  type Env,
-} from "../lib/auth";
+import { clientIp, verifySession, type Env } from "../lib/auth";
 
 export type QueueEnv = Env;
 
@@ -14,10 +9,8 @@ function getQueueDO(c: any, queueId: string) {
   return c.env.QUEUE_DO.get(c.env.QUEUE_DO.idFromName(queueId));
 }
 
-/** Operator-only middleware: call-next, skip, remove, reset, settings. */
 async function requireOperator(c: any, next: () => Promise<void>) {
-  const token = getOperatorCookie(c.req.header("Cookie"));
-  const ok = await verifySession(c.env, token);
+  const ok = await verifySession(c.env, c.req.raw);
   if (!ok) {
     return c.json({ error: "Operator authentication required." }, 401);
   }
