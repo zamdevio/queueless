@@ -1,0 +1,30 @@
+{
+	"name": "queue-less",
+	"main": "src/index.ts",
+	"compatibility_date": "2024-11-01",
+	"compatibility_flags": ["nodejs_compat"],
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "queue-less",
+			"database_id": "df5785c4-5966-4210-a0fe-d5de3073de0f"
+		}
+	],
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "QUEUE_DO",
+				"class_name": "QueueDO"
+			}
+		]
+	},
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_classes": ["QueueDO"]
+		}
+	],
+	"vars": {
+		"ENVIRONMENT": "development"
+	}
+}

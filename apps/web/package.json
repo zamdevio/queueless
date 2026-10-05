@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc -b --noEmit"
+    "typecheck": "tsc -b --noEmit",
+    "deploy": "wrangler pages deploy dist --project-name=thequeueless --commit-dirty"
   },
   "dependencies": {
     "react": "^18.3.1",

@@ -5,9 +5,9 @@ dist/
 *.log
 .DS_Store
 *.tsbuildinfo
-.tsbuildinfo
 .env
 .env.*
+.env.local
 .dev.vars
 maintainer/temp/**
 !maintainer/temp/

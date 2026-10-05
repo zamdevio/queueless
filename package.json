@@ -13,8 +13,9 @@
     "web:dev": "pnpm --filter @queueless/web dev",
     "web:build": "pnpm --filter @queueless/web build",
     "web:preview": "pnpm --filter @queueless/web preview",
+    "web:deploy": "pnpm --filter @queueless/web run deploy",
     "worker:dev": "pnpm --filter @queueless/worker dev",
-    "worker:deploy": "pnpm --filter @queueless/worker deploy",
+    "worker:deploy": "pnpm --filter @queueless/worker run deploy",
     "worker:typecheck": "pnpm --filter @queueless/worker typecheck"
   },
   "devDependencies": {
