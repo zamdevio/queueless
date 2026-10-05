@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   callNext,
   skipTicket,
@@ -8,98 +8,118 @@ import {
   subscribeToQueue,
   type Board,
   type QueueEvent,
+  ApiError,
 } from "../lib/api";
+import { ErrorState } from "../components/ErrorState";
+
+function errMessage(err: unknown, fallback: string): string {
+  if (err instanceof ApiError) return err.message;
+  if (err instanceof Error) return err.message || fallback;
+  return fallback;
+}
+
+function errRetryable(err: unknown): boolean {
+  if (err instanceof ApiError) return err.retryable;
+  return true;
+}
 
 export function OperatorView({ queueId }: { queueId: string }) {
   const [board, setBoard] = useState<Board | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ message: string; retryable: boolean } | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const boardData = await getBoard(queueId);
+      setBoard(boardData);
+    } catch (err) {
+      setError({
+        message: errMessage(err, "Failed to load queue."),
+        retryable: errRetryable(err),
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [queueId]);
 
   useEffect(() => {
+    let disposed = false;
+    let evtSource: EventSource | null = null;
+
     async function init() {
-      try {
-        const boardData = await getBoard(queueId);
-        setBoard(boardData);
-
-        const evtSource = subscribeToQueue(queueId, (event: QueueEvent) => {
-          handleEvent(event);
-        });
-
-        return () => {
-          evtSource.close();
-        };
-      } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
-      }
+      await load();
+      if (disposed) return;
+      evtSource = subscribeToQueue(queueId, (event: QueueEvent) => {
+        if (event.event === "snapshot") {
+          setBoard(event.data);
+          return;
+        }
+        setBoard((prev) => applyEvent(prev, event));
+      });
     }
 
     init();
-  }, [queueId]);
+    return () => {
+      disposed = true;
+      evtSource?.close();
+    };
+  }, [queueId, load]);
 
-  function handleEvent(event: QueueEvent) {
+  function applyEvent(prev: Board | null, event: QueueEvent): Board | null {
+    if (!prev) return prev;
     switch (event.event) {
       case "join":
-        setBoard((prev) => (prev ? { ...prev, tickets: [...prev.tickets, event.data] } : prev));
-        break;
+        return { ...prev, tickets: [...prev.tickets, event.data] };
       case "leave":
-        setBoard((prev) =>
-          prev
-            ? {
-                ...prev,
-                tickets: prev.tickets.map((t) =>
-                  t.id === event.data.ticketId ? { ...t, state: "left" } : t
-                ),
-              }
-            : prev
-        );
-        break;
+        return {
+          ...prev,
+          tickets: prev.tickets.map((t) =>
+            t.id === event.data.ticketId ? { ...t, state: "left" as const } : t
+          ),
+        };
       case "call":
-        setBoard((prev) =>
-          prev
-            ? {
-                ...prev,
-                nowServing: event.data.nowServing,
-                tickets: prev.tickets.map((t) =>
-                  t.id === event.data.ticketId ? { ...t, state: "called" } : t
-                ),
-              }
-            : prev
-        );
-        break;
+        return {
+          ...prev,
+          nowServing: event.data.nowServing ?? prev.nowServing,
+          tickets: prev.tickets.map((t) =>
+            t.id === event.data.ticketId ? { ...t, state: "called" as const } : t
+          ),
+        };
       case "skip":
-        setBoard((prev) =>
-          prev
-            ? {
-                ...prev,
-                tickets: prev.tickets.map((t) =>
-                  t.id === event.data.ticketId ? { ...t, state: "skipped" } : t
-                ),
-              }
-            : prev
-        );
-        break;
+        return {
+          ...prev,
+          tickets: prev.tickets.map((t) =>
+            t.id === event.data.ticketId ? { ...t, state: "skipped" as const } : t
+          ),
+        };
       case "remove":
-        setBoard((prev) =>
-          prev
-            ? {
-                ...prev,
-                tickets: prev.tickets.map((t) =>
-                  t.id === event.data.ticketId ? { ...t, state: "removed" } : t
-                ),
-              }
-            : prev
-        );
-        break;
+        return {
+          ...prev,
+          tickets: prev.tickets.map((t) =>
+            t.id === event.data.ticketId ? { ...t, state: "removed" as const } : t
+          ),
+        };
       case "reset":
-        setBoard(null);
-        break;
+        return { tickets: [], nowServing: null, nextNumber: 1 };
+      default:
+        return prev;
     }
+  }
+
+  function reportError(err: unknown) {
+    setError({
+      message: errMessage(err, "Action failed."),
+      retryable: errRetryable(err),
+    });
   }
 
   async function handleCallNext() {
     try {
       await callNext(queueId);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      reportError(err);
     }
   }
 
@@ -107,7 +127,7 @@ export function OperatorView({ queueId }: { queueId: string }) {
     try {
       await skipTicket(queueId, ticketId);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      reportError(err);
     }
   }
 
@@ -115,7 +135,7 @@ export function OperatorView({ queueId }: { queueId: string }) {
     try {
       await removeTicket(queueId, ticketId);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      reportError(err);
     }
   }
 
@@ -124,20 +144,41 @@ export function OperatorView({ queueId }: { queueId: string }) {
     try {
       await resetQueue(queueId);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      reportError(err);
     }
   }
 
-  if (error) {
-    return <div className="error">Error: {error}</div>;
+  if (loading && !board) {
+    return <div className="loading">Loading queue {queueId}…</div>;
   }
 
-  const tickets = board?.tickets || [];
+  if (error && !board) {
+    return (
+      <ErrorState
+        title="Could not load queue"
+        message={error.message}
+        retryable={error.retryable}
+        onRetry={load}
+      />
+    );
+  }
+
+  const tickets = board?.tickets ?? [];
   const waitingTickets = tickets.filter((t) => t.state === "waiting");
+  const nowServing = board?.nowServing ?? null;
 
   return (
     <div className="operator-view">
       <h1>Operator: {queueId}</h1>
+
+      {error && (
+        <ErrorState
+          title="Action failed"
+          message={error.message}
+          retryable={error.retryable}
+          onRetry={() => setError(null)}
+        />
+      )}
 
       <div className="controls">
         <button onClick={handleCallNext} disabled={waitingTickets.length === 0}>
@@ -146,9 +187,9 @@ export function OperatorView({ queueId }: { queueId: string }) {
         <button onClick={handleReset}>Reset queue</button>
       </div>
 
-      {board?.nowServing !== null && (
+      {nowServing !== null && (
         <div className="now-serving">
-          Now serving: <strong>{board!.nowServing}</strong>
+          Now serving: <strong>{nowServing}</strong>
         </div>
       )}
 
@@ -164,17 +205,23 @@ export function OperatorView({ queueId }: { queueId: string }) {
               </div>
             </li>
           ))}
+          {waitingTickets.length === 0 && <li className="empty-row">No one waiting</li>}
         </ul>
       </div>
 
       <div className="history">
         <h2>History</h2>
         <ul>
-          {tickets.filter((t) => t.state !== "waiting").map((t) => (
-            <li key={t.id} className={t.state}>
-              #{t.number} — {t.state}
-            </li>
-          ))}
+          {tickets
+            .filter((t) => t.state !== "waiting")
+            .map((t) => (
+              <li key={t.id} className={t.state}>
+                #{t.number} — {t.state}
+              </li>
+            ))}
+          {tickets.filter((t) => t.state !== "waiting").length === 0 && (
+            <li className="empty-row">No history yet</li>
+          )}
         </ul>
       </div>
     </div>

@@ -13,7 +13,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("queueless-theme") as Theme;
-      if (stored) return stored;
+      if (stored === "dark" || stored === "light") return stored;
       return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
     }
     return "dark";
@@ -21,9 +21,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const root = document.documentElement;
-    root.classList.remove("light", "dark");
-    root.classList.add(theme);
+    root.setAttribute("data-theme", theme);
+    root.style.colorScheme = theme;
     localStorage.setItem("queueless-theme", theme);
+
+    // keep theme-color meta in sync
+    const metas = document.querySelectorAll('meta[name="theme-color"]');
+    const color = theme === "dark" ? "#0a0a0a" : "#ffffff";
+    metas.forEach((m) => m.setAttribute("content", color));
   }, [theme]);
 
   const toggleTheme = () => setTheme((prev) => (prev === "dark" ? "light" : "dark"));

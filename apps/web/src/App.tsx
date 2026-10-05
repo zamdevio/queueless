@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { ThemeProvider } from "./lib/theme";
+import { PwaProvider } from "./lib/pwa";
 import { Sidebar } from "./components/Sidebar";
 import { LandingView } from "./views/LandingView";
 import { StudentView } from "./views/StudentView";
@@ -7,46 +8,53 @@ import { OperatorView } from "./views/OperatorView";
 
 type View = "landing" | "student" | "operator";
 
+function parseLocation(): { view: View; queueId: string } {
+  const path = window.location.pathname.replace(/\/+$/, "") || "/";
+  const student = path.match(/^\/student\/([^/]+)$/);
+  const operator = path.match(/^\/operator\/([^/]+)$/);
+  if (student) return { view: "student", queueId: student[1] };
+  if (operator) return { view: "operator", queueId: operator[1] };
+  return { view: "landing", queueId: "demo" };
+}
+
 function AppContent() {
-  const [queueId, setQueueId] = useState<string | null>(null);
-  const [view, setView] = useState<View>("landing");
+  const [{ view, queueId }, setLocation] = useState(parseLocation);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useEffect(() => {
-    const hash = window.location.hash;
-    const studentMatch = hash.match(/^#\/student\/(.+)$/);
-    const operatorMatch = hash.match(/^#\/operator\/(.+)$/);
-
-    if (studentMatch) {
-      setQueueId(studentMatch[1]);
-      setView("student");
-    } else if (operatorMatch) {
-      setQueueId(operatorMatch[1]);
-      setView("operator");
-    } else {
-      setQueueId("demo");
-      setView("landing");
+    const onPop = () => setLocation(parseLocation());
+    window.addEventListener("popstate", onPop);
+    window.addEventListener("hashchange", onPop);
+    // clean up any old hash-based URLs
+    if (window.location.hash) {
+      window.history.replaceState(null, "", window.location.pathname);
+      setLocation(parseLocation());
     }
+    return () => {
+      window.removeEventListener("popstate", onPop);
+      window.removeEventListener("hashchange", onPop);
+    };
   }, []);
 
-  function navigateTo(view: View, queueId: string) {
-    window.location.hash = `/#/${view}/${queueId}`;
-    setView(view);
-    setQueueId(queueId);
+  function navigateTo(nextView: View, nextQueueId: string) {
+    const path =
+      nextView === "landing" ? "/" : nextView === "student" ? `/student/${nextQueueId}` : `/operator/${nextQueueId}`;
+    window.history.pushState(null, "", path);
+    setLocation({ view: nextView, queueId: nextQueueId });
   }
 
   return (
     <div className={`app-shell ${sidebarCollapsed ? "shell-collapsed" : ""}`}>
       <Sidebar
         currentView={view}
-        queueId={queueId || "demo"}
+        queueId={queueId}
         onNavigate={navigateTo}
         onCollapsedChange={setSidebarCollapsed}
       />
       <main className="main-content">
         {view === "landing" && <LandingView onNavigate={navigateTo} />}
-        {view === "student" && queueId && <StudentView queueId={queueId} />}
-        {view === "operator" && queueId && <OperatorView queueId={queueId} />}
+        {view === "student" && <StudentView queueId={queueId} />}
+        {view === "operator" && <OperatorView queueId={queueId} />}
       </main>
     </div>
   );
@@ -55,7 +63,9 @@ function AppContent() {
 export function App() {
   return (
     <ThemeProvider>
-      <AppContent />
+      <PwaProvider>
+        <AppContent />
+      </PwaProvider>
     </ThemeProvider>
   );
 }

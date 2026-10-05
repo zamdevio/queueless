@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTheme } from "../lib/theme";
+import { usePwa } from "../lib/pwa";
 
 interface SidebarProps {
   currentView: "landing" | "student" | "operator";
@@ -30,6 +31,7 @@ export function Sidebar({
   onCollapsedChange,
 }: SidebarProps) {
   const { theme, toggleTheme } = useTheme();
+  const { canInstall, isInstalled, install } = usePwa();
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -115,28 +117,49 @@ export function Sidebar({
           {!iconsOnly && <span className="nav-label">Home</span>}
         </button>
 
-        {currentView !== "landing" && (
+        <div className={`nav-divider ${iconsOnly ? "nav-divider-compact" : ""}`}>
+          {iconsOnly ? "Q" : `Queue: ${queueId}`}
+        </div>
+
+        <button
+          className={`nav-item ${currentView === "student" ? "active" : ""} ${
+            iconsOnly ? "nav-item-compact" : ""
+          }`}
+          onClick={() => go("student")}
+          title="Student View"
+        >
+          <span className="nav-icon">👤</span>
+          {!iconsOnly && <span className="nav-label">Student View</span>}
+        </button>
+
+        <button
+          className={`nav-item ${currentView === "operator" ? "active" : ""} ${
+            iconsOnly ? "nav-item-compact" : ""
+          }`}
+          onClick={() => go("operator")}
+          title="Operator Dashboard"
+        >
+          <span className="nav-icon">‍💼</span>
+          {!iconsOnly && <span className="nav-label">Operator</span>}
+        </button>
+
+        {!isInstalled && (
           <>
-            {!iconsOnly && <div className="nav-divider">Queue: {queueId}</div>}
+            <div className={`nav-divider ${iconsOnly ? "nav-divider-compact" : ""}`}>
+              {iconsOnly ? "A" : "Add-ons"}
+            </div>
             <button
-              className={`nav-item ${currentView === "student" ? "active" : ""} ${
-                iconsOnly ? "nav-item-compact" : ""
-              }`}
-              onClick={() => go("student")}
-              title="Student View"
+              className={`nav-item ${iconsOnly ? "nav-item-compact" : ""}`}
+              onClick={() => install()}
+              title={canInstall ? "Install app" : "Install not offered by this browser"}
+              disabled={!canInstall}
             >
-              <span className="nav-icon">👤</span>
-              {!iconsOnly && <span className="nav-label">Student View</span>}
-            </button>
-            <button
-              className={`nav-item ${currentView === "operator" ? "active" : ""} ${
-                iconsOnly ? "nav-item-compact" : ""
-              }`}
-              onClick={() => go("operator")}
-              title="Operator Dashboard"
-            >
-              <span className="nav-icon">‍💼</span>
-              {!iconsOnly && <span className="nav-label">Operator</span>}
+              <span className="nav-icon">📥</span>
+              {!iconsOnly && (
+                <span className="nav-label">
+                  {canInstall ? "Install app" : "Install unavailable"}
+                </span>
+              )}
             </button>
           </>
         )}

@@ -32,9 +32,9 @@ export function LandingView({ onNavigate }: LandingViewProps) {
           <div className="hero-links">
             <p>Or use direct links:</p>
             <div className="hero-links-row">
-              <a href="#/student/demo" className="link">Student view (demo)</a>
+              <a href="/student/demo" className="link">Student view (demo)</a>
               <span className="separator">•</span>
-              <a href="#/operator/demo" className="link">Operator view (demo)</a>
+              <a href="/operator/demo" className="link">Operator view (demo)</a>
             </div>
           </div>
         </div>
