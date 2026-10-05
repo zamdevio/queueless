@@ -5,28 +5,26 @@ import {
   removeTicket,
   resetQueue,
   getBoard,
+  updateQueueSettings,
   subscribeToQueue,
+  applyEvent,
+  errMessage,
+  errRetryable,
+  logoutOperator,
   type Board,
   type QueueEvent,
-  ApiError,
 } from "../lib/api";
 import { ErrorState } from "../components/ErrorState";
-
-function errMessage(err: unknown, fallback: string): string {
-  if (err instanceof ApiError) return err.message;
-  if (err instanceof Error) return err.message || fallback;
-  return fallback;
-}
-
-function errRetryable(err: unknown): boolean {
-  if (err instanceof ApiError) return err.retryable;
-  return true;
-}
+import { useAuth } from "../lib/auth";
+import { OperatorLogin } from "./OperatorLogin";
+import { toast } from "sonner";
 
 export function OperatorView({ queueId }: { queueId: string }) {
+  const { isOperator, loading: authLoading, logout } = useAuth();
   const [board, setBoard] = useState<Board | null>(null);
   const [error, setError] = useState<{ message: string; retryable: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [maxInput, setMaxInput] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -34,6 +32,7 @@ export function OperatorView({ queueId }: { queueId: string }) {
     try {
       const boardData = await getBoard(queueId);
       setBoard(boardData);
+      setMaxInput(String(boardData.settings?.maxWaiting ?? 50));
     } catch (err) {
       setError({
         message: errMessage(err, "Failed to load queue."),
@@ -52,11 +51,10 @@ export function OperatorView({ queueId }: { queueId: string }) {
       await load();
       if (disposed) return;
       evtSource = subscribeToQueue(queueId, (event: QueueEvent) => {
-        if (event.event === "snapshot") {
-          setBoard(event.data);
-          return;
-        }
         setBoard((prev) => applyEvent(prev, event));
+        if (event.event === "settings") {
+          setMaxInput(String(event.data?.maxWaiting ?? ""));
+        }
       });
     }
 
@@ -67,57 +65,22 @@ export function OperatorView({ queueId }: { queueId: string }) {
     };
   }, [queueId, load]);
 
-  function applyEvent(prev: Board | null, event: QueueEvent): Board | null {
-    if (!prev) return prev;
-    switch (event.event) {
-      case "join":
-        return { ...prev, tickets: [...prev.tickets, event.data] };
-      case "leave":
-        return {
-          ...prev,
-          tickets: prev.tickets.map((t) =>
-            t.id === event.data.ticketId ? { ...t, state: "left" as const } : t
-          ),
-        };
-      case "call":
-        return {
-          ...prev,
-          nowServing: event.data.nowServing ?? prev.nowServing,
-          tickets: prev.tickets.map((t) =>
-            t.id === event.data.ticketId ? { ...t, state: "called" as const } : t
-          ),
-        };
-      case "skip":
-        return {
-          ...prev,
-          tickets: prev.tickets.map((t) =>
-            t.id === event.data.ticketId ? { ...t, state: "skipped" as const } : t
-          ),
-        };
-      case "remove":
-        return {
-          ...prev,
-          tickets: prev.tickets.map((t) =>
-            t.id === event.data.ticketId ? { ...t, state: "removed" as const } : t
-          ),
-        };
-      case "reset":
-        return { tickets: [], nowServing: null, nextNumber: 1 };
-      default:
-        return prev;
-    }
-  }
-
   function reportError(err: unknown) {
     setError({
       message: errMessage(err, "Action failed."),
       retryable: errRetryable(err),
     });
+    toast.error(errMessage(err, "Action failed."));
   }
 
   async function handleCallNext() {
     try {
-      await callNext(queueId);
+      const called = await callNext(queueId);
+      if (called) {
+        toast.success(`Called ticket #${called.number}`);
+      } else {
+        toast.info("No one waiting to call.");
+      }
     } catch (err) {
       reportError(err);
     }
@@ -126,6 +89,7 @@ export function OperatorView({ queueId }: { queueId: string }) {
   async function handleSkip(ticketId: string) {
     try {
       await skipTicket(queueId, ticketId);
+      toast.success("Ticket skipped");
     } catch (err) {
       reportError(err);
     }
@@ -134,6 +98,7 @@ export function OperatorView({ queueId }: { queueId: string }) {
   async function handleRemove(ticketId: string) {
     try {
       await removeTicket(queueId, ticketId);
+      toast.success("Ticket removed");
     } catch (err) {
       reportError(err);
     }
@@ -143,9 +108,42 @@ export function OperatorView({ queueId }: { queueId: string }) {
     if (!confirm("Reset the entire queue? This cannot be undone.")) return;
     try {
       await resetQueue(queueId);
+      toast.success("Queue reset");
     } catch (err) {
       reportError(err);
     }
+  }
+
+  async function handleSettings(e: React.FormEvent) {
+    e.preventDefault();
+    const max = Number(maxInput);
+    if (!Number.isFinite(max) || max < 0) {
+      toast.error("Max waiting must be a number ≥ 0");
+      return;
+    }
+    try {
+      await updateQueueSettings(queueId, max);
+      toast.success(`Queue limit set to ${max}`);
+    } catch (err) {
+      reportError(err);
+    }
+  }
+
+  async function handleLogout() {
+    try {
+      await logout();
+      toast.success("Signed out");
+    } catch {
+      await logoutOperator().catch(() => {});
+    }
+  }
+
+  if (authLoading) {
+    return <div className="loading">Checking operator session…</div>;
+  }
+
+  if (!isOperator) {
+    return <OperatorLogin />;
   }
 
   if (loading && !board) {
@@ -166,10 +164,17 @@ export function OperatorView({ queueId }: { queueId: string }) {
   const tickets = board?.tickets ?? [];
   const waitingTickets = tickets.filter((t) => t.state === "waiting");
   const nowServing = board?.nowServing ?? null;
+  const maxWaiting = board?.settings?.maxWaiting ?? 50;
+  const waitingCount = board?.waitingCount ?? waitingTickets.length;
 
   return (
     <div className="operator-view">
-      <h1>Operator: {queueId}</h1>
+      <div className="view-header">
+        <h1>Operator · {queueId}</h1>
+        <button type="button" className="btn-secondary" onClick={handleLogout}>
+          Sign out
+        </button>
+      </div>
 
       {error && (
         <ErrorState
@@ -182,10 +187,28 @@ export function OperatorView({ queueId }: { queueId: string }) {
 
       <div className="controls">
         <button onClick={handleCallNext} disabled={waitingTickets.length === 0}>
-          Call next ({waitingTickets.length} waiting)
+          Call next ({waitingCount} waiting)
         </button>
         <button onClick={handleReset}>Reset queue</button>
       </div>
+
+      <form className="settings-row" onSubmit={handleSettings}>
+        <label htmlFor="maxWaiting">Max waiting</label>
+        <input
+          id="maxWaiting"
+          type="number"
+          min={0}
+          max={10000}
+          value={maxInput}
+          onChange={(e) => setMaxInput(e.target.value)}
+        />
+        <button type="submit" className="btn-secondary">
+          Save limit
+        </button>
+        <span className="settings-hint">
+          {waitingCount}/{maxWaiting} in line
+        </span>
+      </form>
 
       {nowServing !== null && (
         <div className="now-serving">
@@ -198,7 +221,19 @@ export function OperatorView({ queueId }: { queueId: string }) {
         <ul>
           {waitingTickets.map((t) => (
             <li key={t.id}>
-              <span>#{t.number}</span>
+              <div className="ticket-row">
+                <span className="ticket-num">#{t.number}</span>
+                <span className="ticket-meta">
+                  {[
+                    t.meta?.country,
+                    t.meta?.city,
+                    t.meta?.language,
+                    t.meta?.userAgent?.slice(0, 40),
+                  ]
+                    .filter(Boolean)
+                    .join(" · ") || "—"}
+                </span>
+              </div>
               <div className="actions">
                 <button onClick={() => handleSkip(t.id)}>Skip</button>
                 <button onClick={() => handleRemove(t.id)}>Remove</button>

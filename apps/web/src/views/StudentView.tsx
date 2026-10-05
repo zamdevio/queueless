@@ -1,13 +1,16 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import {
   joinQueue,
   leaveQueue,
   getBoard,
   subscribeToQueue,
+  applyEvent,
+  errMessage,
+  errRetryable,
   type Ticket,
   type Board,
   type QueueEvent,
-  ApiError,
 } from "../lib/api";
 import { ErrorState } from "../components/ErrorState";
 
@@ -17,6 +20,8 @@ export function StudentView({ queueId }: { queueId: string }) {
   const [error, setError] = useState<{ message: string; retryable: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
+  const [calledOpen, setCalledOpen] = useState(false);
+  const calledRef = useRef(false);
 
   const loadBoard = useCallback(async () => {
     try {
@@ -24,10 +29,9 @@ export function StudentView({ queueId }: { queueId: string }) {
       setBoard(boardData);
       setError(null);
     } catch (err) {
-      const apiErr = err instanceof ApiError ? err : null;
       setError({
-        message: apiErr?.message || (err instanceof Error ? err.message : "Failed to load queue."),
-        retryable: apiErr?.retryable ?? true,
+        message: errMessage(err, "Failed to load queue."),
+        retryable: errRetryable(err),
       });
     } finally {
       setLoading(false);
@@ -38,15 +42,20 @@ export function StudentView({ queueId }: { queueId: string }) {
     setJoining(true);
     setError(null);
     try {
-      const newTicket = await joinQueue(queueId);
+      const meta = {
+        userAgent: navigator.userAgent.slice(0, 300),
+        language: navigator.language,
+      };
+      const newTicket = await joinQueue(queueId, meta);
       setTicket(newTicket);
+      toast.success(`Joined queue — ticket #${newTicket.number}`);
       await loadBoard();
     } catch (err) {
-      const apiErr = err instanceof ApiError ? err : null;
       setError({
-        message: apiErr?.message || (err instanceof Error ? err.message : "Failed to join."),
-        retryable: apiErr?.retryable ?? true,
+        message: errMessage(err, "Failed to join."),
+        retryable: errRetryable(err),
       });
+      toast.error(errMessage(err, "Failed to join."));
     } finally {
       setJoining(false);
     }
@@ -60,11 +69,16 @@ export function StudentView({ queueId }: { queueId: string }) {
       await loadBoard();
       if (disposed) return;
       evtSource = subscribeToQueue(queueId, (event: QueueEvent) => {
-        if (event.event === "snapshot") {
-          setBoard(event.data);
-          return;
-        }
         setBoard((prev) => applyEvent(prev, event));
+        if (
+          event.event === "call" &&
+          ticket &&
+          event.data?.ticketId === ticket.id &&
+          !calledRef.current
+        ) {
+          calledRef.current = true;
+          setCalledOpen(true);
+        }
       });
     }
 
@@ -73,61 +87,19 @@ export function StudentView({ queueId }: { queueId: string }) {
       disposed = true;
       evtSource?.close();
     };
-  }, [queueId, loadBoard]);
-
-  function applyEvent(prev: Board | null, event: QueueEvent): Board | null {
-    if (!prev) return prev;
-    switch (event.event) {
-      case "join":
-        return { ...prev, tickets: [...prev.tickets, event.data] };
-      case "leave":
-        return {
-          ...prev,
-          tickets: prev.tickets.map((t) =>
-            t.id === event.data.ticketId ? { ...t, state: "left" as const } : t
-          ),
-        };
-      case "call":
-        return {
-          ...prev,
-          nowServing: event.data.nowServing ?? prev.nowServing,
-          tickets: prev.tickets.map((t) =>
-            t.id === event.data.ticketId ? { ...t, state: "called" as const } : t
-          ),
-        };
-      case "skip":
-        return {
-          ...prev,
-          tickets: prev.tickets.map((t) =>
-            t.id === event.data.ticketId ? { ...t, state: "skipped" as const } : t
-          ),
-        };
-      case "remove":
-        return {
-          ...prev,
-          tickets: prev.tickets.map((t) =>
-            t.id === event.data.ticketId ? { ...t, state: "removed" as const } : t
-          ),
-        };
-      case "reset":
-        setTicket(null);
-        return { tickets: [], nowServing: null, nextNumber: 1 };
-      default:
-        return prev;
-    }
-  }
+  }, [queueId, loadBoard, ticket]);
 
   async function handleLeave() {
     if (!ticket) return;
     try {
       await leaveQueue(queueId, ticket.id);
       setTicket(null);
+      toast.success("Left the queue");
       await loadBoard();
     } catch (err) {
-      const apiErr = err instanceof ApiError ? err : null;
       setError({
-        message: apiErr?.message || (err instanceof Error ? err.message : "Failed to leave."),
-        retryable: apiErr?.retryable ?? true,
+        message: errMessage(err, "Failed to leave."),
+        retryable: errRetryable(err),
       });
     }
   }
@@ -150,6 +122,8 @@ export function StudentView({ queueId }: { queueId: string }) {
   const tickets = board?.tickets ?? [];
   const waitingTickets = tickets.filter((t) => t.state === "waiting");
   const nowServing = board?.nowServing ?? null;
+  const maxWaiting = board?.settings?.maxWaiting ?? 50;
+  const waitingCount = board?.waitingCount ?? waitingTickets.length;
 
   const position = ticket
     ? waitingTickets.findIndex((t) => t.id === ticket.id) + 1
@@ -157,7 +131,7 @@ export function StudentView({ queueId }: { queueId: string }) {
 
   return (
     <div className="student-view">
-      <h1>Queue: {queueId}</h1>
+      <h1>Queue · {queueId}</h1>
 
       {error && (
         <ErrorState
@@ -171,10 +145,18 @@ export function StudentView({ queueId }: { queueId: string }) {
       {!ticket ? (
         <div className="join-panel">
           <p className="join-hint">
-            Join the queue anonymously to get a ticket number. No account needed.
+            Join anonymously to get a ticket number. You&apos;ll see your position and when
+            it&apos;s your turn.
           </p>
-          <button className="btn-primary" onClick={join} disabled={joining}>
-            {joining ? "Joining…" : "Join queue"}
+          <div className="queue-capacity">
+            {waitingCount}/{maxWaiting} waiting
+          </div>
+          <button
+            className="btn-primary"
+            onClick={join}
+            disabled={joining || waitingCount >= maxWaiting}
+          >
+            {joining ? "Joining…" : waitingCount >= maxWaiting ? "Queue full" : "Join queue"}
           </button>
         </div>
       ) : (
@@ -193,7 +175,7 @@ export function StudentView({ queueId }: { queueId: string }) {
               </p>
             )}
             {ticket.state === "called" && (
-              <p className="ticket-called">It's your turn — head to the counter.</p>
+              <p className="ticket-called">It&apos;s your turn — head to the counter.</p>
             )}
             {ticket.state !== "waiting" && ticket.state !== "called" && (
               <p className="ticket-closed">Ticket {ticket.state}</p>
@@ -213,12 +195,31 @@ export function StudentView({ queueId }: { queueId: string }) {
         <ul>
           {waitingTickets.map((t) => (
             <li key={t.id} className={ticket && t.id === ticket.id ? "self" : ""}>
-              <span>#{t.number}{ticket && t.id === ticket.id ? " (you)" : ""}</span>
+              <span>
+                #{t.number}
+                {ticket && t.id === ticket.id ? " (you)" : ""}
+              </span>
             </li>
           ))}
           {waitingTickets.length === 0 && <li className="empty-row">Queue is empty</li>}
         </ul>
       </div>
+
+      {calledOpen && ticket && (
+        <div className="dialog-backdrop" role="dialog" aria-modal="true">
+          <div className="dialog-panel">
+            <div className="dialog-icon">🔔</div>
+            <h2>It&apos;s your turn</h2>
+            <p>
+              Ticket <strong>#{ticket.number}</strong> is now being served. Please head to
+              the counter.
+            </p>
+            <button className="btn-primary" onClick={() => setCalledOpen(false)}>
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

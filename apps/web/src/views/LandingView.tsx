@@ -16,25 +16,26 @@ export function LandingView({ onNavigate }: LandingViewProps) {
             Digital queue management for campus services, clinics, and small businesses.
           </p>
           <p className="hero-description">
-            Join queues from your phone, watch your position in real-time, and get notified
-            when it's your turn. No more standing in lines.
+            Join from your phone, watch your position in real time, and get called when it&apos;s
+            your turn. Staff run a simple operator dashboard.
           </p>
 
           <div className="hero-actions">
-            <button className="btn-primary" onClick={() => onNavigate("student", "demo")}>
-              Join as Student
+            <button className="btn-primary" onClick={() => onNavigate("student", "main")}>
+              Join a queue
             </button>
-            <button className="btn-secondary" onClick={() => onNavigate("operator", "demo")}>
-              Open Operator Dashboard
+            <button className="btn-secondary" onClick={() => onNavigate("operator", "main")}>
+              Operator dashboard
             </button>
           </div>
 
           <div className="hero-links">
-            <p>Or use direct links:</p>
             <div className="hero-links-row">
-              <a href="/student/demo" className="link">Student view (demo)</a>
+              <a href="/docs/guide" className="link">Guide</a>
               <span className="separator">•</span>
-              <a href="/operator/demo" className="link">Operator view (demo)</a>
+              <a href="/docs/development" className="link">Development</a>
+              <span className="separator">•</span>
+              <a href="/docs/about" className="link">About</a>
             </div>
           </div>
         </div>
@@ -43,26 +44,26 @@ export function LandingView({ onNavigate }: LandingViewProps) {
       <div className="features">
         <div className="feature-card">
           <div className="feature-icon">📱</div>
-          <h3>Mobile First</h3>
-          <p>Join queues from any device. No app download required.</p>
+          <h3>Mobile first</h3>
+          <p>Join queues from any device. No app install required for customers.</p>
         </div>
 
         <div className="feature-card">
           <div className="feature-icon">⚡</div>
-          <h3>Real-time Updates</h3>
-          <p>Live position tracking with instant status updates.</p>
+          <h3>Live updates</h3>
+          <p>Real-time position and serving number via server push.</p>
         </div>
 
         <div className="feature-card">
           <div className="feature-icon">🔒</div>
-          <h3>Privacy First</h3>
-          <p>Anonymous tickets. No personal data required to join.</p>
+          <h3>Private by default</h3>
+          <p>Anonymous customer tickets — no account to join a line.</p>
         </div>
 
         <div className="feature-card">
-          <div className="feature-icon">📊</div>
-          <h3>Simple Analytics</h3>
-          <p>Basic queue statistics for operators.</p>
+          <div className="feature-icon">️</div>
+          <h3>Staff controls</h3>
+          <p>PIN-protected operator dashboard with capacity limits.</p>
         </div>
       </div>
 
@@ -74,8 +75,6 @@ export function LandingView({ onNavigate }: LandingViewProps) {
           <span>Hono</span>
           <span>•</span>
           <span>Durable Objects</span>
-          <span>•</span>
-          <span>D1</span>
           <span>•</span>
           <span>SSE</span>
           <span>•</span>

@@ -1,32 +1,31 @@
 # Queue (domain)
 
-**Status:** design map — decisions locked in `docs/architecture/overview.md`; no runtime module yet.
+**Status:** live via `QueueDO` per `queueId`.
 
 ## Responsibility
 
-Own rules for an active queue session: ticket identity, ordering, now-serving, join/leave, operator actions, and how waiting clients learn about changes.
+Ticket identity, ordering, now-serving, join/leave, operator actions, capacity, client meta, SSE fan-out.
 
-## Decided model
+## Model
 
-- **Ticket:** opaque id + public number; customers stay **anonymous** (no customer accounts) unless changed later.
-- **States (sketch):** waiting → called → served | skipped | left | removed.
-- **Live coordination:** Durable Object per `queueId` (serialize mutations, SSE fan-out).
-- **Durability:** D1 full ticket store (+ serve history for ETA).
-- **Realtime:** **SSE** server→client; mutations stay on **HTTP** (Hono).
-- **ETA:** rolling average of recent service durations × position.
-- **Staff:** real accounts + roles (operator/admin TBD).
-- **Shape:** multi-queue — `queueId` in the URL; one DO (+ ticket set) per queue.
+- **Ticket:** `id`, `number`, `state`, `createdAt`, `meta`
+- **States:** waiting → called → served | skipped | left | removed
+- **Settings:** `maxWaiting` (default 50) — operator-editable via `POST /api/queue/:id/settings`
+- **Coordination:** Durable Object per `queueId`; HTTP mutations + SSE board
+- **Default queue:** `main`
+
+## Capacity
+
+Join returns **409** `QUEUE_FULL` when `waiting >= maxWaiting`.
+
+## Meta / privacy
+
+On join, worker captures CF headers + hashed IP. Never store raw IP. Customer identity = ticket + number only.
 
 ## Concurrency
 
-Joins and call-next serialize inside that queue’s Durable Object. D1 writes must not become a second unordered source of truth for “who’s next.”
+Mutations serialize inside the DO. SSE snapshot + event fan-out to subscribers.
 
-## Still open
+## Out
 
-- Exact DO → D1 write path.
-- Role set / demo account bootstrap.
-
-
-## Out until Focus promotes
-
-Multi-counter, org hierarchy, notifications, billing.
+Multi-counter, billing, customer accounts.

@@ -3,6 +3,7 @@
 **Rule:** Focus now = **max 3**. Everything else stays queued until a Focus slot frees.
 
 **Shipped receipts:** [`../shipped/README.md`](../shipped/README.md)  
+**Phase:** [`production-ready.md`](./production-ready.md)  
 **Architecture:** [`../../docs/architecture/overview.md`](../../docs/architecture/overview.md)
 
 ---
@@ -11,30 +12,25 @@
 
 | Priority | Vertical | Notes |
 |----------|----------|-------|
-| 1 | Web SPA UI | **Shipped** — student + operator views wired to deployed worker |
-| 2 | Deploy web | `pnpm web:deploy` → thequeueless.pages.dev |
-| 3 | Demo + polish | Test the full flow, fix UX issues |
+| 1 | Production-ready | PIN auth, capacity, meta, sonner, call dialog, docs, drop demo labels |
+| 2 | Docs + README | How to use / how it works / deploy from repo |
+| 3 | Deploy + secret | `OPERATOR_PIN` + worker/pages deploy |
 
 ## Queued — do not start
 
 | # | Item | Why parked |
 |---|------|------------|
-| 1 | D1 ticket schema | DO holds live state; add D1 after UI demo |
-| 2 | ETA | Needs serve timestamps |
-| 3 | Staff accounts / roles | Gate operator side |
-| 4 | Production hardening | After UI demo |
+| 1 | D1 ticket history | DO holds live state |
+| 2 | Rolling ETA | Needs serve timestamps |
+| 3 | Full RBAC / accounts | PIN is enough for v1 |
+| 4 | Multi-counter | Stretch |
 
 ## Deployed
 
 - Worker: `https://queueless.zamdevio.workers.dev`
 - Pages: `https://thequeueless.pages.dev`
 
-## Next task
-
-1. Deploy web: `pnpm web:deploy`
-2. Demo: student joins → sees position → staff calls next
-
 ## Do not
 
-- Collect student PII by default
-- Deploy production CF for the course idea phase alone
+- Collect customer PII by default (meta is anonymous/hashed)
+- Leave operator routes unauthenticated once PIN ships

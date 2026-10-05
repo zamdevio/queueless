@@ -2,10 +2,14 @@ import { useCallback, useEffect, useState } from "react";
 import { useTheme } from "../lib/theme";
 import { usePwa } from "../lib/pwa";
 
+type NavView = "landing" | "student" | "operator" | "docs";
+type DocsPage = "guide" | "development" | "about";
+
 interface SidebarProps {
-  currentView: "landing" | "student" | "operator";
+  currentView: NavView;
+  docsPage?: DocsPage;
   queueId: string;
-  onNavigate: (view: "landing" | "student" | "operator", queueId: string) => void;
+  onNavigate: (view: NavView, queueId: string, docsPage?: DocsPage) => void;
   onCollapsedChange?: (collapsed: boolean) => void;
 }
 
@@ -26,6 +30,7 @@ function readCollapsed(): boolean {
 
 export function Sidebar({
   currentView,
+  docsPage,
   queueId,
   onNavigate,
   onCollapsedChange,
@@ -86,8 +91,8 @@ export function Sidebar({
   }, [mobileOpen]);
 
   const iconsOnly = collapsed;
-  const go = (view: "landing" | "student" | "operator") => {
-    onNavigate(view, queueId);
+  const go = (view: NavView, docs: DocsPage = "guide") => {
+    onNavigate(view, queueId, docs);
     setMobileOpen(false);
   };
 
@@ -118,7 +123,7 @@ export function Sidebar({
         </button>
 
         <div className={`nav-divider ${iconsOnly ? "nav-divider-compact" : ""}`}>
-          {iconsOnly ? "Q" : `Queue: ${queueId}`}
+          {iconsOnly ? "Q" : `Queue · ${queueId}`}
         </div>
 
         <button
@@ -126,10 +131,10 @@ export function Sidebar({
             iconsOnly ? "nav-item-compact" : ""
           }`}
           onClick={() => go("student")}
-          title="Student View"
+          title="Customer view"
         >
           <span className="nav-icon">👤</span>
-          {!iconsOnly && <span className="nav-label">Student View</span>}
+          {!iconsOnly && <span className="nav-label">Customer</span>}
         </button>
 
         <button
@@ -137,31 +142,61 @@ export function Sidebar({
             iconsOnly ? "nav-item-compact" : ""
           }`}
           onClick={() => go("operator")}
-          title="Operator Dashboard"
+          title="Operator dashboard"
         >
           <span className="nav-icon">‍💼</span>
           {!iconsOnly && <span className="nav-label">Operator</span>}
         </button>
 
-        {!isInstalled && (
-          <>
-            <div className={`nav-divider ${iconsOnly ? "nav-divider-compact" : ""}`}>
-              {iconsOnly ? "A" : "Add-ons"}
-            </div>
-            <button
-              className={`nav-item ${iconsOnly ? "nav-item-compact" : ""}`}
-              onClick={() => install()}
-              title={canInstall ? "Install app" : "Install not offered by this browser"}
-              disabled={!canInstall}
-            >
-              <span className="nav-icon">📥</span>
-              {!iconsOnly && (
-                <span className="nav-label">
-                  {canInstall ? "Install app" : "Install unavailable"}
-                </span>
-              )}
-            </button>
-          </>
+        <div className={`nav-divider ${iconsOnly ? "nav-divider-compact" : ""}`}>
+          {iconsOnly ? "D" : "Docs"}
+        </div>
+
+        {(["guide", "development", "about"] as DocsPage[]).map((page) => (
+          <button
+            key={page}
+            className={`nav-item ${
+              currentView === "docs" && docsPage === page ? "active" : ""
+            } ${iconsOnly ? "nav-item-compact" : ""}`}
+            onClick={() => go("docs", page)}
+            title={page.charAt(0).toUpperCase() + page.slice(1)}
+          >
+            <span className="nav-icon">
+              {page === "guide" ? "📘" : page === "development" ? "⚙️" : "ℹ️"}
+            </span>
+            {!iconsOnly && (
+              <span className="nav-label">{page.charAt(0).toUpperCase() + page.slice(1)}</span>
+            )}
+          </button>
+        ))}
+
+        <div className={`nav-divider ${iconsOnly ? "nav-divider-compact" : ""}`}>
+          {iconsOnly ? "A" : "Add-ons"}
+        </div>
+
+        {isInstalled ? (
+          <button
+            className={`nav-item nav-item-installed ${iconsOnly ? "nav-item-compact" : ""}`}
+            title="App already installed"
+            disabled
+          >
+            <span className="nav-icon">✅</span>
+            {!iconsOnly && <span className="nav-label">Installed</span>}
+          </button>
+        ) : (
+          <button
+            className={`nav-item ${iconsOnly ? "nav-item-compact" : ""}`}
+            onClick={() => install()}
+            title={canInstall ? "Install app" : "Install not offered by this browser"}
+            disabled={!canInstall}
+          >
+            <span className="nav-icon">📥</span>
+            {!iconsOnly && (
+              <span className="nav-label">
+                {canInstall ? "Install app" : "Install unavailable"}
+              </span>
+            )}
+          </button>
         )}
       </nav>
 

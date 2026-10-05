@@ -621,3 +621,208 @@
     font-size: 28px;
   }
 }
+
+/* ===== Production UI: login, dialog, settings, docs, meta rows ===== */
+
+.view-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.view-header h1 {
+  margin-bottom: 0;
+}
+
+.operator-login h2 {
+  margin-bottom: 8px;
+}
+
+.login-form {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.login-form input {
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-text);
+  font-size: 15px;
+  min-width: 160px;
+  letter-spacing: 0.12em;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  padding: 12px 16px;
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.settings-row label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.settings-row input[type="number"] {
+  width: 88px;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-text);
+  font-size: 14px;
+}
+
+.settings-hint {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-left: auto;
+}
+
+.queue-capacity {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-bottom: 12px;
+}
+
+.ticket-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.ticket-num {
+  font-weight: 600;
+}
+
+.ticket-meta {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 420px;
+}
+
+.nav-item-installed {
+  color: var(--color-success) !important;
+}
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 16px;
+}
+
+.dialog-panel {
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 28px 24px;
+  max-width: 380px;
+  width: 100%;
+  text-align: center;
+  box-shadow: var(--shadow-lg);
+}
+
+.dialog-icon {
+  font-size: 40px;
+  margin-bottom: 8px;
+}
+
+.dialog-panel h2 {
+  font-size: 20px;
+  margin-bottom: 10px;
+  color: var(--color-text);
+}
+
+.dialog-panel p {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.dialog-panel .btn-primary {
+  width: 100%;
+}
+
+.docs-view {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.docs-view h1 {
+  font-size: 28px;
+  margin-bottom: 20px;
+}
+
+.docs-view h2 {
+  font-size: 17px;
+  margin: 22px 0 10px;
+  color: var(--color-text);
+}
+
+.docs-view p,
+.docs-view li {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+
+.docs-view ul,
+.docs-view ol {
+  padding-left: 20px;
+}
+
+.docs-view li {
+  margin-bottom: 6px;
+}
+
+.docs-view code,
+.docs-view pre {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 13px;
+}
+
+.docs-view code {
+  background-color: var(--color-bg-tertiary);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.docs-view pre {
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  overflow-x: auto;
+  margin: 10px 0;
+  color: var(--color-text);
+  line-height: 1.5;
+}
+
+.docs-view section {
+  margin-bottom: 8px;
+}

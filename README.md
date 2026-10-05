@@ -1,43 +1,60 @@
 # QueueLess
 
-Lightweight **digital queue** for small businesses and campus-style service points: customers join from a link/QR, watch their number, and staff call the next person from a simple operator view.
+Lightweight **digital queue** for campus services, clinics, and small businesses — customers join from a phone, watch their place in line, and staff call the next person from an operator dashboard.
 
-> **Status:** Scaffolded foundation + planning docs. Product features are **not** implemented yet.
+> **Live:** [thequeueless.pages.dev](https://thequeueless.pages.dev) · API: [queueless.zamdevio.workers.dev](https://queueless.zamdevio.workers.dev)
 
 ## Quick start
 
 ```bash
-pnpm i
-pnpm build
-pnpm typecheck
+pnpm install
+pnpm typecheck && pnpm build && pnpm test
 ```
 
 | Command | What |
 |---------|------|
-| `pnpm web:dev` | Vite SPA |
-| `pnpm worker:dev` | Worker (needs local D1 / wrangler setup when you use `/health`) |
-| `pnpm knip` | Unused export / dependency check |
+| `pnpm web:dev` | SPA on http://localhost:5173 |
+| `pnpm worker:dev` | API on http://localhost:8787 |
+| `pnpm worker:deploy` | Deploy Worker + Durable Object |
+| `pnpm web:deploy` | Build + deploy Pages |
+| `pnpm db:migrate:local` / `db:migrate:remote` | D1 migrations |
 
-Agents and contributors: start at [`AGENT.md`](./AGENT.md). Active focus: [`maintainer/phases/focus.md`](./maintainer/phases/focus.md).
+**Operator PIN:** set with `wrangler secret put OPERATOR_PIN` (prod) or `apps/worker/.dev.vars` (local).
 
-## Docs
+## Product
 
-| Doc | Purpose |
-|-----|---------|
-| [`docs/course/assignment-1.md`](./docs/course/assignment-1.md) | Course idea proposal (Assignment 1) |
-| [`docs/product/purpose.md`](./docs/product/purpose.md) | Product purpose |
-| [`docs/product/scope.md`](./docs/product/scope.md) | MVP vs out of scope vs stretch |
-| [`docs/architecture/overview.md`](./docs/architecture/overview.md) | Intended architecture + open decisions |
+| | |
+|--|--|
+| **Customer** | Anonymous ticket, live position, dialog when called |
+| **Operator** | PIN sign-in, call next / skip / remove / reset, queue capacity |
+| **Docs** | In-app Guide · Development · About (sidebar) |
 
-Course docs ≠ product docs. Assignment 1 does **not** require a deployed app.
+Default queue id: `main`. Any `/student/{id}` · `/operator/{id}` · `/docs/{page}`.
+
+## Stack
+
+- **Web:** React + Vite SPA, PWA (manifest + service worker)
+- **API:** Cloudflare Workers + Hono
+- **Live queue:** Durable Object per `queueId`
+- **Updates:** SSE
+- **Auth:** Operator PIN → signed HttpOnly cookie
+- **DB:** D1 binding (queue state lives in the DO)
+
+## Deploy (free Cloudflare)
+
+1. Fork/clone this repo, `pnpm install`
+2. `wrangler d1 create queueless` → paste `database_id` into `apps/worker/wrangler.jsonc`
+3. `wrangler secret put OPERATOR_PIN` from `apps/worker`
+4. `pnpm worker:deploy` then `pnpm web:deploy`
+5. Point Pages project name in `apps/web/package.json` at your project
 
 ## Layout
 
 ```text
-apps/web/       React + Vite SPA
-apps/worker/    Cloudflare Worker + Hono (+ D1 stub)
+apps/web/       React SPA + PWA
+apps/worker/    Hono API + QueueDO + auth
 docs/           Course, product, architecture
-maintainer/     Focus, systems, agents, shipped (control plane)
+maintainer/     Focus, systems, agents, shipped
 ```
 
-Scaffolded with `@zamdevio/scaffolder` (`cf-app`). Deploy-to-free-Cloudflare is a later goal, not a current gate.
+Agents: start at [`AGENT.md`](./AGENT.md) · Active focus: [`maintainer/phases/focus.md`](./maintainer/phases/focus.md)

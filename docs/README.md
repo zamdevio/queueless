@@ -1,11 +1,13 @@
 # Docs — QueueLess
 
-End-user and project documentation. Keep this tree free of sprint language and `maintainer/` links.
+Public / product documentation. Keep this tree free of sprint language.
 
-| Area | Path | Audience |
-|------|------|----------|
-| Course | [`course/`](./course/) | Idea proposal / Build Studio Assignment 1 |
-| Product | [`product/`](./product/) | What QueueLess is, MVP vs out of scope |
-| Architecture | [`architecture/`](./architecture/) | High-level intended design (open decisions marked) |
+| Area | Path |
+|------|------|
+| Course | [`course/`](./course/) — Assignment 1 idea proposal |
+| Product | [`product/`](./product/) — purpose, scope |
+| Architecture | [`architecture/`](./architecture/) — intended design |
 
-**Course vs product:** Assignment 1 is an **idea proposal**. It does not require a deployed app, GitHub hand-in, or live demo unless a later assignment says so. Product docs describe the system we intend to build; they are not a claim that it is already shipped.
+**In-app docs:** Guide · Development · About — served from the SPA under `/docs/*` (sidebar).
+
+**Course vs product:** Assignment 1 is an idea proposal, not a shipped-app requirement. The live system on Pages is the feasibility demo.

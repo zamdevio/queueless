@@ -2,28 +2,46 @@ import { DurableObject } from "cloudflare:workers";
 
 export type TicketState = "waiting" | "called" | "served" | "skipped" | "left" | "removed";
 
+export interface TicketMeta {
+  userAgent?: string;
+  country?: string;
+  city?: string;
+  language?: string;
+  ipHash?: string;
+}
+
 export interface Ticket {
   id: string;
   number: number;
   state: TicketState;
   createdAt: number;
+  meta?: TicketMeta;
+}
+
+export interface QueueSettings {
+  maxWaiting: number;
 }
 
 export interface QueueBoard {
   tickets: Ticket[];
   nowServing: number | null;
   nextNumber: number;
+  settings: QueueSettings;
+  waitingCount: number;
 }
 
 export interface QueueEvent {
-  event: "join" | "leave" | "call" | "skip" | "remove" | "reset" | "snapshot";
+  event: "join" | "leave" | "call" | "skip" | "remove" | "reset" | "snapshot" | "settings";
   data: any;
 }
+
+const DEFAULT_MAX_WAITING = 50;
 
 export class QueueDO extends DurableObject {
   private tickets = new Map<string, Ticket>();
   private nowServing: number | null = null;
   private nextNumber = 1;
+  private settings: QueueSettings = { maxWaiting: DEFAULT_MAX_WAITING };
   private subscribers = new Set<WritableStreamDefaultWriter<Uint8Array>>();
 
   constructor(state: DurableObjectState, env: any) {
@@ -36,11 +54,20 @@ export class QueueDO extends DurableObject {
           this.tickets = new Map(data.tickets || []);
           this.nowServing = data.nowServing ?? null;
           this.nextNumber = data.nextNumber ?? 1;
+          this.settings = {
+            maxWaiting: data.settings?.maxWaiting ?? DEFAULT_MAX_WAITING,
+          };
         }
       } catch {
         // start fresh
       }
     });
+  }
+
+  private waitingCount(): number {
+    let n = 0;
+    for (const t of this.tickets.values()) if (t.state === "waiting") n++;
+    return n;
   }
 
   private async persist(): Promise<void> {
@@ -51,6 +78,7 @@ export class QueueDO extends DurableObject {
           tickets: [...this.tickets.entries()],
           nowServing: this.nowServing,
           nextNumber: this.nextNumber,
+          settings: this.settings,
         })
       );
     } catch {
@@ -67,8 +95,16 @@ export class QueueDO extends DurableObject {
     switch (request.method) {
       case "POST": {
         switch (action) {
-          case "join":
-            return this.handleJoin();
+          case "join": {
+            let meta: TicketMeta | undefined;
+            try {
+              const body = await request.json<{ meta?: TicketMeta }>();
+              meta = body?.meta;
+            } catch {
+              meta = undefined;
+            }
+            return this.handleJoin(meta);
+          }
           case "leave":
             return this.handleLeave(param || "");
           case "call-next":
@@ -79,6 +115,19 @@ export class QueueDO extends DurableObject {
             return this.handleRemove(param || "");
           case "reset":
             return this.handleReset();
+          case "settings": {
+            let max = DEFAULT_MAX_WAITING;
+            try {
+              const body = await request.json<{ maxWaiting?: number }>();
+              max = Number(body?.maxWaiting);
+            } catch {
+              return new Response(JSON.stringify({ error: "Invalid settings body" }), { status: 400 });
+            }
+            if (!Number.isFinite(max) || max < 0 || max > 10_000) {
+              return new Response(JSON.stringify({ error: "maxWaiting must be 0–10000" }), { status: 400 });
+            }
+            return this.handleSettings(Math.floor(max));
+          }
           default:
             return new Response(JSON.stringify({ error: "Unknown action" }), { status: 404 });
         }
@@ -94,13 +143,34 @@ export class QueueDO extends DurableObject {
     }
   }
 
-  private async handleJoin(): Promise<Response> {
+  private board(): QueueBoard {
+    return {
+      tickets: [...this.tickets.values()],
+      nowServing: this.nowServing,
+      nextNumber: this.nextNumber,
+      settings: { ...this.settings },
+      waitingCount: this.waitingCount(),
+    };
+  }
+
+  private async handleJoin(meta?: TicketMeta): Promise<Response> {
+    const waiting = this.waitingCount();
+    if (waiting >= this.settings.maxWaiting) {
+      return new Response(
+        JSON.stringify({
+          error: `Queue is full (${waiting}/${this.settings.maxWaiting}). Try again later.`,
+          code: "QUEUE_FULL",
+        }),
+        { status: 409 }
+      );
+    }
     const ticketId = crypto.randomUUID();
     const ticket: Ticket = {
       id: ticketId,
       number: this.nextNumber++,
       state: "waiting",
       createdAt: Date.now(),
+      meta,
     };
     this.tickets.set(ticketId, ticket);
     await this.persist();
@@ -169,13 +239,15 @@ export class QueueDO extends DurableObject {
     return Response.json({ ok: true });
   }
 
+  private async handleSettings(maxWaiting: number): Promise<Response> {
+    this.settings.maxWaiting = maxWaiting;
+    await this.persist();
+    this.broadcast({ event: "settings", data: { ...this.settings } });
+    return Response.json({ ok: true, settings: this.settings });
+  }
+
   private async handleGetBoard(): Promise<Response> {
-    const board: QueueBoard = {
-      tickets: [...this.tickets.values()],
-      nowServing: this.nowServing,
-      nextNumber: this.nextNumber,
-    };
-    return Response.json(board);
+    return Response.json(this.board());
   }
 
   private async handleSse(request: Request): Promise<Response> {
@@ -183,12 +255,7 @@ export class QueueDO extends DurableObject {
     const writer = writable.getWriter();
     this.subscribers.add(writer);
 
-    const board: QueueBoard = {
-      tickets: [...this.tickets.values()],
-      nowServing: this.nowServing,
-      nextNumber: this.nextNumber,
-    };
-    const init = `data: ${JSON.stringify({ event: "snapshot", data: board })}\n\n`;
+    const init = `data: ${JSON.stringify({ event: "snapshot", data: this.board() })}\n\n`;
     writer.write(new TextEncoder().encode(init));
 
     const signal = (request as any).signal;

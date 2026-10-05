@@ -2,19 +2,19 @@
 
 Surface: `apps/web` (`@queueless/web`).
 
-## Today
+- React + Vite SPA; default queue **`main`**
+- Views: landing · customer · operator (PIN) · docs (guide/development/about)
+- Realtime: SSE + sonner toasts; **call dialog** when ticket is called
+- Theme: `[data-theme]` dark/light; PWA via manifest + SW
+- API base: `VITE_API_URL` or `https://queueless.zamdevio.workers.dev`
 
-- Vite + React stub page (“scaffolded web surface”).
-- No customer/operator routes yet.
-- No API client wired.
+## Routes
 
-## Intended (not built)
+| Path | View |
+|------|------|
+| `/` | Landing |
+| `/student/:queueId` | Customer |
+| `/operator/:queueId` | Operator |
+| `/docs/guide` \| `development` \| `about` | In-app docs |
 
-- Customer flow: join, ticket status, leave.
-- Operator flow: dashboard, call next, skip/remove, reset.
-- Same SPA, clearly separated routes/components.
-- Talk to `apps/worker` via configurable base URL (env) — never hardcode production hosts in source.
-
-## Notes
-
-UI work waits on Focus + architecture decisions (`docs/architecture/overview.md`).
+Sidebar: Queue links · Docs · Add-ons (Install / Installed).

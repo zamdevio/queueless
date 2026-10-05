@@ -2,15 +2,10 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import queueRoutes from "./routes/queue";
 import streamRoutes from "./routes/stream";
+import authRoutes from "./routes/auth";
 import { QueueDO } from "./do/QueueDO";
+import type { Env } from "./lib/auth";
 
-export type Env = {
-  DB: D1Database;
-  QUEUE_DO: DurableObjectNamespace;
-  ENVIRONMENT: string;
-};
-
-/** Exact origins we own / use for local dev. */
 const ALLOWED_ORIGINS = new Set([
   "http://localhost:5173",
   "https://localhost:5173",
@@ -21,7 +16,6 @@ const ALLOWED_ORIGINS = new Set([
 
 function isAllowedOrigin(origin: string): boolean {
   if (ALLOWED_ORIGINS.has(origin)) return true;
-  // Hashed Pages deployments: https://<hash>.thequeueless.pages.dev
   try {
     const url = new URL(origin);
     return (
@@ -43,6 +37,7 @@ app.use(
     allowMethods: ["GET", "POST", "OPTIONS"],
     allowHeaders: ["Content-Type", "Accept"],
     exposeHeaders: ["Content-Type"],
+    credentials: true,
     maxAge: 86400,
   })
 );
@@ -52,7 +47,7 @@ app.get("/", (c) =>
     ok: true,
     service: "queueless",
     environment: c.env.ENVIRONMENT,
-  }),
+  })
 );
 
 app.get("/health", async (c) => {
@@ -65,6 +60,7 @@ app.get("/health", async (c) => {
   }
 });
 
+app.route("/api/auth", authRoutes);
 app.route("/api/queue", queueRoutes);
 app.route("/api/queue", streamRoutes);
 
