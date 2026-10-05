@@ -1,13 +1,13 @@
 {
-	"name": "queue-less",
+	"name": "queueless",
 	"main": "src/index.ts",
 	"compatibility_date": "2024-11-01",
 	"compatibility_flags": ["nodejs_compat"],
 	"d1_databases": [
 		{
 			"binding": "DB",
-			"database_name": "queue-less",
-			"database_id": "df5785c4-5966-4210-a0fe-d5de3073de0f"
+			"database_name": "queueless",
+			"database_id": "7c9556dc-1024-492a-8524-7bf392fa43c1"
 		}
 	],
 	"durable_objects": {

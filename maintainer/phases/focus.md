@@ -11,28 +11,30 @@
 
 | Priority | Vertical | Notes |
 |----------|----------|-------|
-| 1 | Queue DO + SSE + HTTP | **Slice 1 shipped** — demoable queue API |
-| 2 | Web SPA UI | Wire up to the API — student join + operator dashboard |
+| 1 | Web SPA UI | Student join + operator dashboard, wired to deployed worker |
+| 2 | Course Assignment 1 | Keep proposal aligned |
 | 3 | Auth (later) | Staff accounts/roles — gate operator side |
 
 ## Queued — do not start
 
 | # | Item | Why parked |
 |---|------|------------|
-| 1 | D1 ticket schema | DO holds live state; add D1 for history after UI demo |
-| 2 | ETA | Needs serve timestamps from call-next |
-| 3 | Staff accounts / roles | Gate operator side (skip/remove/reset) |
-| 4 | Production CF deploy | Not Assignment 1 |
+| 1 | D1 ticket schema | DO holds live state; add D1 after UI demo |
+| 2 | ETA | Needs serve timestamps |
+| 3 | Staff accounts / roles | Gate operator side |
+| 4 | Production hardening | After UI demo |
+
+## Deployed
+
+- Worker: `https://queueless.zamdevio.workers.dev`
+- Pages: `https://thequeueless.pages.dev`
 
 ## Next task
 
-1. Build Web SPA that consumes the API (student join + operator dashboard).
-2. Demo: student joins → sees position → staff calls next.
-3. Then promote auth or ETA based on what the demo reveals.
+1. Build Web SPA that consumes the API
+2. Demo: student joins → sees position → staff calls next
 
 ## Do not
 
-- Start both auth and queue actor in parallel without Focus room
-- Reintroduce WebSocket unless a later need forces it
 - Collect student PII by default
 - Deploy production CF for the course idea phase alone
