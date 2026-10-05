@@ -14,7 +14,7 @@ const app = new Hono<{ Bindings: Env }>();
 app.get("/", (c) =>
   c.json({
     ok: true,
-    service: "queue-less",
+    service: "queueless",
     environment: c.env.ENVIRONMENT,
   }),
 );
@@ -29,9 +29,11 @@ app.get("/health", async (c) => {
   }
 });
 
-app.route("/", queueRoutes);
-app.route("/", streamRoutes);
+app.route("/api/queue", queueRoutes);
+app.route("/api/queue", streamRoutes);
 
 export default app;
 
 export { QueueDO };
+
+export const fetch = app.fetch;
