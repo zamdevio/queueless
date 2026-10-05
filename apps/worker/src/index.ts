@@ -32,14 +32,8 @@ app.get("/health", async (c) => {
 app.route("/api/queue", queueRoutes);
 app.route("/api/queue", streamRoutes);
 
-export default app;
-
 export { QueueDO };
-
-export async function fetch(
-  request: Request,
-  env: Env,
-  ctx: ExecutionContext
-): Promise<Response> {
-  return app.fetch(request, env, ctx);
-}
+export { app };
+export default {
+  fetch: app.fetch.bind(app),
+};

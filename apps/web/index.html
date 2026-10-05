@@ -3,8 +3,58 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="QueueLess - Digital queue management for campus services" />
     <title>QueueLess — Digital Queue Management</title>
+    <meta
+      name="description"
+      content="QueueLess — lightweight digital queue management for campus services, clinics, and small businesses. Join from your phone, watch your position live."
+    />
+    <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="author" content="Abdisamed Mohamed Farah" />
+    <link rel="canonical" href="https://thequeueless.pages.dev/" />
+
+    <!-- Open Graph -->
+    <meta property="og:site_name" content="QueueLess" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="QueueLess — Digital Queue Management" />
+    <meta
+      property="og:description"
+      content="Lightweight digital queue management for campus services, clinics, and small businesses."
+    />
+    <meta property="og:url" content="https://thequeueless.pages.dev/" />
+    <meta property="og:image" content="https://thequeueless.pages.dev/icons/icon-512.svg" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="QueueLess — Digital Queue Management" />
+    <meta
+      name="twitter:description"
+      content="Lightweight digital queue management for campus services, clinics, and small businesses."
+    />
+    <meta name="twitter:image" content="https://thequeueless.pages.dev/icons/icon-512.svg" />
+
+    <!-- Icons / PWA -->
+    <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <!-- Early theme hydration to avoid light/dark flash -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem("queueless-theme");
+          var dark =
+            stored === "dark" ||
+            (!stored && window.matchMedia("(prefers-color-scheme: dark)").matches);
+          var root = document.documentElement;
+          root.setAttribute("data-theme", dark ? "dark" : "light");
+          root.style.colorScheme = dark ? "dark" : "light";
+        } catch (e) {
+          // ignore
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

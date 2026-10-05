@@ -1,0 +1,54 @@
+{
+  "name": "QueueLess — Digital Queue Management",
+  "short_name": "QueueLess",
+  "description": "Lightweight digital queue management for campus services, clinics, and small businesses.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "browser"],
+  "orientation": "any",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
+  "categories": ["business", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Student view",
+      "short_name": "Student",
+      "description": "Join a queue as a student",
+      "url": "/#/student/demo"
+    },
+    {
+      "name": "Operator dashboard",
+      "short_name": "Operator",
+      "description": "Open the operator queue dashboard",
+      "url": "/#/operator/demo"
+    }
+  ]
+}

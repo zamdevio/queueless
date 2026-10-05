@@ -5,7 +5,7 @@ interface LandingViewProps {
 }
 
 export function LandingView({ onNavigate }: LandingViewProps) {
-  const { theme } = useTheme();
+  useTheme();
 
   return (
     <div className="landing-view">
@@ -16,8 +16,8 @@ export function LandingView({ onNavigate }: LandingViewProps) {
             Digital queue management for campus services, clinics, and small businesses.
           </p>
           <p className="hero-description">
-            Join queues from your phone, watch your position in real-time, and get notified when it's your turn.
-            No more standing in lines.
+            Join queues from your phone, watch your position in real-time, and get notified
+            when it's your turn. No more standing in lines.
           </p>
 
           <div className="hero-actions">
@@ -31,9 +31,11 @@ export function LandingView({ onNavigate }: LandingViewProps) {
 
           <div className="hero-links">
             <p>Or use direct links:</p>
-            <a href="#/student/demo" className="link">Student view (demo)</a>
-            <span className="separator">•</span>
-            <a href="#/operator/demo" className="link">Operator view (demo)</a>
+            <div className="hero-links-row">
+              <a href="#/student/demo" className="link">Student view (demo)</a>
+              <span className="separator">•</span>
+              <a href="#/operator/demo" className="link">Operator view (demo)</a>
+            </div>
           </div>
         </div>
       </div>
@@ -46,19 +48,19 @@ export function LandingView({ onNavigate }: LandingViewProps) {
         </div>
 
         <div className="feature-card">
-          <div className="feature-icon"></div>
+          <div className="feature-icon">⚡</div>
           <h3>Real-time Updates</h3>
           <p>Live position tracking with instant status updates.</p>
         </div>
 
         <div className="feature-card">
-          <div className="feature-icon"></div>
+          <div className="feature-icon">🔒</div>
           <h3>Privacy First</h3>
           <p>Anonymous tickets. No personal data required to join.</p>
         </div>
 
         <div className="feature-card">
-          <div className="feature-icon"></div>
+          <div className="feature-icon">📊</div>
           <h3>Simple Analytics</h3>
           <p>Basic queue statistics for operators.</p>
         </div>

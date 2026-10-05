@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
-import app from "./index";
+import worker from "./index";
+import { app } from "./index";
 
 const mockQueueDO = {
   idFromName: vi.fn().mockReturnValue("mock-id"),
@@ -17,7 +18,7 @@ const env = {
 
 describe("scaffold worker", () => {
   it("GET / returns service info", async () => {
-    const res = await app.request("/", undefined, env);
+    const res = await app.fetch(new Request("http://localhost/"), env);
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toMatchObject({
       ok: true,
@@ -30,9 +31,13 @@ describe("scaffold worker", () => {
     const joinRes = new Response(JSON.stringify({ id: "t1", number: 1 }));
     mockQueueDO.get.mockReturnValue({ fetch: vi.fn().mockResolvedValue(joinRes) });
 
-    const res = await app.request("/api/queue/demo/join", { method: "POST" }, env);
+    const res = await app.fetch(new Request("http://localhost/api/queue/demo/join", { method: "POST" }), env);
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toMatchObject({ id: "t1", number: 1 });
     expect(mockQueueDO.get).toHaveBeenCalledWith("mock-id");
+  });
+
+  it("default export exposes fetch for wrangler", () => {
+    expect(typeof worker.fetch).toBe("function");
   });
 });

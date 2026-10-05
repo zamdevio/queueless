@@ -10,6 +10,7 @@ type View = "landing" | "student" | "operator";
 function AppContent() {
   const [queueId, setQueueId] = useState<string | null>(null);
   const [view, setView] = useState<View>("landing");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     const hash = window.location.hash;
@@ -35,8 +36,13 @@ function AppContent() {
   }
 
   return (
-    <div className="app-layout">
-      <Sidebar currentView={view} queueId={queueId || "demo"} onNavigate={navigateTo} />
+    <div className={`app-shell ${sidebarCollapsed ? "shell-collapsed" : ""}`}>
+      <Sidebar
+        currentView={view}
+        queueId={queueId || "demo"}
+        onNavigate={navigateTo}
+        onCollapsedChange={setSidebarCollapsed}
+      />
       <main className="main-content">
         {view === "landing" && <LandingView onNavigate={navigateTo} />}
         {view === "student" && queueId && <StudentView queueId={queueId} />}
