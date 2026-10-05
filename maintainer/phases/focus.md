@@ -11,9 +11,9 @@
 
 | Priority | Vertical | Notes |
 |----------|----------|-------|
-| 1 | Web SPA UI | Student join + operator dashboard, wired to deployed worker |
-| 2 | Course Assignment 1 | Keep proposal aligned |
-| 3 | Auth (later) | Staff accounts/roles — gate operator side |
+| 1 | Web SPA UI | **Shipped** — student + operator views wired to deployed worker |
+| 2 | Deploy web | `pnpm web:deploy` → thequeueless.pages.dev |
+| 3 | Demo + polish | Test the full flow, fix UX issues |
 
 ## Queued — do not start
 
@@ -31,7 +31,7 @@
 
 ## Next task
 
-1. Build Web SPA that consumes the API
+1. Deploy web: `pnpm web:deploy`
 2. Demo: student joins → sees position → staff calls next
 
 ## Do not
