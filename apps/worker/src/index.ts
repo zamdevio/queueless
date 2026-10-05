@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { cors } from "hono/cors";
 import queueRoutes from "./routes/queue";
 import streamRoutes from "./routes/stream";
 import { QueueDO } from "./do/QueueDO";
@@ -9,7 +10,42 @@ export type Env = {
   ENVIRONMENT: string;
 };
 
+/** Exact origins we own / use for local dev. */
+const ALLOWED_ORIGINS = new Set([
+  "http://localhost:5173",
+  "https://localhost:5173",
+  "http://127.0.0.1:5173",
+  "https://127.0.0.1:5173",
+  "https://thequeueless.pages.dev",
+]);
+
+function isAllowedOrigin(origin: string): boolean {
+  if (ALLOWED_ORIGINS.has(origin)) return true;
+  // Hashed Pages deployments: https://<hash>.thequeueless.pages.dev
+  try {
+    const url = new URL(origin);
+    return (
+      url.protocol === "https:" &&
+      (url.hostname === "thequeueless.pages.dev" ||
+        url.hostname.endsWith(".thequeueless.pages.dev"))
+    );
+  } catch {
+    return false;
+  }
+}
+
 const app = new Hono<{ Bindings: Env }>();
+
+app.use(
+  "*",
+  cors({
+    origin: (origin) => (isAllowedOrigin(origin) ? origin : null),
+    allowMethods: ["GET", "POST", "OPTIONS"],
+    allowHeaders: ["Content-Type", "Accept"],
+    exposeHeaders: ["Content-Type"],
+    maxAge: 86400,
+  })
+);
 
 app.get("/", (c) =>
   c.json({
