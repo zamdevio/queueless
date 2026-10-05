@@ -24,21 +24,16 @@ function AppContent() {
   useEffect(() => {
     const onPop = () => setLocation(parseLocation());
     window.addEventListener("popstate", onPop);
-    window.addEventListener("hashchange", onPop);
-    // clean up any old hash-based URLs
-    if (window.location.hash) {
-      window.history.replaceState(null, "", window.location.pathname);
-      setLocation(parseLocation());
-    }
-    return () => {
-      window.removeEventListener("popstate", onPop);
-      window.removeEventListener("hashchange", onPop);
-    };
+    return () => window.removeEventListener("popstate", onPop);
   }, []);
 
   function navigateTo(nextView: View, nextQueueId: string) {
     const path =
-      nextView === "landing" ? "/" : nextView === "student" ? `/student/${nextQueueId}` : `/operator/${nextQueueId}`;
+      nextView === "landing"
+        ? "/"
+        : nextView === "student"
+          ? `/student/${nextQueueId}`
+          : `/operator/${nextQueueId}`;
     window.history.pushState(null, "", path);
     setLocation({ view: nextView, queueId: nextQueueId });
   }
