@@ -11,7 +11,7 @@ function ThemedToaster() {
   return (
     <Toaster
       theme={theme}
-      position="top-center"
+      position="top-right"
       richColors
       closeButton
       toastOptions={{

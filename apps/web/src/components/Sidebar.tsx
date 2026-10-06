@@ -10,7 +10,6 @@ import {
   IconInfo,
   IconDownload,
   IconCheck,
-  IconExternal,
   IconSun,
   IconMoon,
   IconPanelLeftClose,
@@ -59,7 +58,7 @@ export function Sidebar({
   onCollapsedChange,
 }: SidebarProps) {
   const { theme, toggleTheme } = useTheme();
-  const { canInstall, isInstalled, canOpenApp, install, openApp } = usePwa();
+  const { canInstall, isInstalled, install } = usePwa();
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -121,25 +120,14 @@ export function Sidebar({
 
   const addonButtons = (
     <>
-      {isInstalled && !canOpenApp && (
+      {isInstalled && (
         <div
           className={`nav-item nav-item-installed ${iconsOnly ? "nav-item-compact" : ""}`}
-          title="App installed"
+          title="App already installed — open from your home screen or taskbar"
         >
           <IconCheck size={16} />
           {!iconsOnly && <span className="nav-label">Installed</span>}
         </div>
-      )}
-      {canOpenApp && (
-        <button
-          type="button"
-          className={`nav-item ${iconsOnly ? "nav-item-compact" : ""}`}
-          onClick={openApp}
-          title="Open the installed app"
-        >
-          <IconExternal size={16} />
-          {!iconsOnly && <span className="nav-label">Open app</span>}
-        </button>
       )}
       {!isInstalled && (
         <button

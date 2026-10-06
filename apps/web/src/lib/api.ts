@@ -17,6 +17,15 @@ export type Ticket = {
   state: "waiting" | "called" | "served" | "skipped" | "left" | "removed";
   createdAt: number;
   meta?: TicketMeta;
+  calledAt?: number;
+};
+
+export type QueueStats = {
+  avgServiceMs: number | null;
+  samples: number;
+  lastServiceMs: number | null;
+  issued: number;
+  waiting: number;
 };
 
 export type Board = {
@@ -25,6 +34,7 @@ export type Board = {
   nextNumber: number;
   settings?: { maxWaiting: number };
   waitingCount?: number;
+  stats?: QueueStats;
 };
 
 /**
@@ -108,7 +118,6 @@ async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
       headers,
     });
   } catch {
-    // Browser CORS failures and offline both surface as TypeError / Failed to fetch
     throw new ApiError(networkMessage(), { network: true, cors: true });
   }
 
@@ -266,8 +275,11 @@ export function applyEvent(prev: Board | null, event: QueueEvent): Board | null 
       return {
         ...prev,
         nowServing: event.data.nowServing ?? prev.nowServing,
+        stats: event.data.stats ?? prev.stats,
         tickets: prev.tickets.map((t) =>
-          t.id === event.data.ticketId ? { ...t, state: "called" as const } : t
+          t.id === event.data.ticketId
+            ? { ...t, state: "called" as const, calledAt: event.data.calledAt ?? Date.now() }
+            : t
         ),
       };
     case "skip":
@@ -310,4 +322,15 @@ export function isUnauthorized(err: unknown): boolean {
 
 export function isCorsOrNetwork(err: unknown): boolean {
   return err instanceof ApiError && err.cors === true;
+}
+
+/** Format ms as compact human wait (e.g. "~3 min", "just under a minute"). */
+export function formatEtaMs(ms: number | null | undefined): string | null {
+  if (ms == null || !Number.isFinite(ms) || ms < 0) return null;
+  const minutes = ms / 60_000;
+  if (minutes < 1) return "under a minute";
+  if (minutes < 60) return `~${Math.ceil(minutes)} min`;
+  const hours = Math.floor(minutes / 60);
+  const rem = Math.round(minutes % 60);
+  return `~${hours}h${rem ? ` ${rem}m` : ""}`;
 }

@@ -8,6 +8,7 @@ import {
   applyEvent,
   errMessage,
   errRetryable,
+  formatEtaMs,
   type Ticket,
   type Board,
   type QueueEvent,
@@ -125,10 +126,17 @@ export function StudentView({ queueId }: { queueId: string }) {
   const nowServing = board?.nowServing ?? null;
   const maxWaiting = board?.settings?.maxWaiting ?? 50;
   const waitingCount = board?.waitingCount ?? waitingTickets.length;
+  const stats = board?.stats;
+  const avgService = formatEtaMs(stats?.avgServiceMs ?? null);
 
   const position = ticket
     ? waitingTickets.findIndex((t) => t.id === ticket.id) + 1
     : 0;
+
+  const etaForMe =
+    ticket && ticket.state === "waiting" && position > 0 && stats?.avgServiceMs
+      ? formatEtaMs(position * stats.avgServiceMs)
+      : null;
 
   return (
     <div className="student-view">
@@ -168,6 +176,11 @@ export function StudentView({ queueId }: { queueId: string }) {
             {ticket.state === "waiting" && position > 0 && (
               <p>
                 Position in line: <strong>{position}</strong>
+              </p>
+            )}
+            {etaForMe && (
+              <p>
+                Estimated wait: <strong>{etaForMe}</strong>
               </p>
             )}
             {nowServing !== null && (

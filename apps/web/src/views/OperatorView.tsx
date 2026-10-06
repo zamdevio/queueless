@@ -183,6 +183,7 @@ export function OperatorView({ queueId }: { queueId: string }) {
   const nowServing = board?.nowServing ?? null;
   const maxWaiting = board?.settings?.maxWaiting ?? 50;
   const waitingCount = board?.waitingCount ?? waitingTickets.length;
+  const stats = board?.stats;
 
   return (
     <div className="operator-view">
@@ -201,6 +202,33 @@ export function OperatorView({ queueId }: { queueId: string }) {
           onRetry={() => setError(null)}
         />
       )}
+
+      <div className="stats-grid">
+        <div className="stat-card">
+          <div className="stat-content">
+            <div className="stat-value">{stats?.avgServiceMs != null ? `${Math.round(stats.avgServiceMs / 1000)}s` : "—"}</div>
+            <div className="stat-label">Avg service</div>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-content">
+            <div className="stat-value">{stats?.samples ?? 0}</div>
+            <div className="stat-label">Samples</div>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-content">
+            <div className="stat-value">{stats?.issued ?? waitingCount}</div>
+            <div className="stat-label">Issued</div>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-content">
+            <div className="stat-value">{waitingCount}/{maxWaiting}</div>
+            <div className="stat-label">In line</div>
+          </div>
+        </div>
+      </div>
 
       <div className="controls">
         <button onClick={handleCallNext} disabled={waitingTickets.length === 0}>

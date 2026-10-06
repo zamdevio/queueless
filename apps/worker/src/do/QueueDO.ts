@@ -16,10 +16,25 @@ export interface Ticket {
   state: TicketState;
   createdAt: number;
   meta?: TicketMeta;
+  /** When this ticket was called (epoch ms); used for rolling ETA samples */
+  calledAt?: number;
 }
 
 export interface QueueSettings {
   maxWaiting: number;
+}
+
+export interface QueueStats {
+  /** Rolling average service time in ms (time between call-next events) */
+  avgServiceMs: number | null;
+  /** How many service samples in the rolling window */
+  samples: number;
+  /** Last observed service duration in ms */
+  lastServiceMs: number | null;
+  /** Total tickets ever issued this session */
+  issued: number;
+  /** Tickets currently waiting */
+  waiting: number;
 }
 
 export interface QueueBoard {
@@ -28,20 +43,33 @@ export interface QueueBoard {
   nextNumber: number;
   settings: QueueSettings;
   waitingCount: number;
+  stats: QueueStats;
 }
 
 export interface QueueEvent {
-  event: "join" | "leave" | "call" | "skip" | "remove" | "reset" | "snapshot" | "settings";
+  event:
+    | "join"
+    | "leave"
+    | "call"
+    | "skip"
+    | "remove"
+    | "reset"
+    | "snapshot"
+    | "settings";
   data: any;
 }
 
 const DEFAULT_MAX_WAITING = 50;
+const ETA_SAMPLE_WINDOW = 20;
 
 export class QueueDO extends DurableObject {
   private tickets = new Map<string, Ticket>();
   private nowServing: number | null = null;
   private nextNumber = 1;
   private settings: QueueSettings = { maxWaiting: DEFAULT_MAX_WAITING };
+  /** Rolling service-time samples (ms between consecutive call-next) */
+  private serviceSamples: number[] = [];
+  private lastServiceMs: number | null = null;
   private subscribers = new Set<WritableStreamDefaultWriter<Uint8Array>>();
 
   constructor(state: DurableObjectState, env: any) {
@@ -57,6 +85,8 @@ export class QueueDO extends DurableObject {
           this.settings = {
             maxWaiting: data.settings?.maxWaiting ?? DEFAULT_MAX_WAITING,
           };
+          this.serviceSamples = Array.isArray(data.serviceSamples) ? data.serviceSamples : [];
+          this.lastServiceMs = typeof data.lastServiceMs === "number" ? data.lastServiceMs : null;
         }
       } catch {
         // start fresh
@@ -70,6 +100,31 @@ export class QueueDO extends DurableObject {
     return n;
   }
 
+  private avgServiceMs(): number | null {
+    if (this.serviceSamples.length === 0) return null;
+    const sum = this.serviceSamples.reduce((a, b) => a + b, 0);
+    return Math.round(sum / this.serviceSamples.length);
+  }
+
+  private stats(): QueueStats {
+    return {
+      avgServiceMs: this.avgServiceMs(),
+      samples: this.serviceSamples.length,
+      lastServiceMs: this.lastServiceMs,
+      issued: this.nextNumber - 1,
+      waiting: this.waitingCount(),
+    };
+  }
+
+  private pushServiceSample(ms: number): void {
+    if (!Number.isFinite(ms) || ms < 0 || ms > 24 * 60 * 60 * 1000) return;
+    this.serviceSamples.push(Math.round(ms));
+    if (this.serviceSamples.length > ETA_SAMPLE_WINDOW) {
+      this.serviceSamples = this.serviceSamples.slice(-ETA_SAMPLE_WINDOW);
+    }
+    this.lastServiceMs = Math.round(ms);
+  }
+
   private async persist(): Promise<void> {
     try {
       await this.ctx.storage.put(
@@ -79,6 +134,8 @@ export class QueueDO extends DurableObject {
           nowServing: this.nowServing,
           nextNumber: this.nextNumber,
           settings: this.settings,
+          serviceSamples: this.serviceSamples,
+          lastServiceMs: this.lastServiceMs,
         })
       );
     } catch {
@@ -150,6 +207,7 @@ export class QueueDO extends DurableObject {
       nextNumber: this.nextNumber,
       settings: { ...this.settings },
       waitingCount: this.waitingCount(),
+      stats: this.stats(),
     };
   }
 
@@ -190,21 +248,41 @@ export class QueueDO extends DurableObject {
   }
 
   private async handleCallNext(): Promise<Response> {
+    const now = Date.now();
     const waiting = [...this.tickets.values()].find((t) => t.state === "waiting");
     if (!waiting) {
       return Response.json(null);
     }
+
+    // Service sample = time since previous ticket was called
+    if (this.nowServing !== null) {
+      const prev = [...this.tickets.values()].find(
+        (t) => t.number === this.nowServing && t.calledAt != null
+      );
+      if (prev?.calledAt) {
+        this.pushServiceSample(now - prev.calledAt);
+      }
+    }
+
     waiting.state = "called";
+    waiting.calledAt = now;
     this.nowServing = waiting.number;
     await this.persist();
     this.broadcast({
       event: "call",
-      data: { ticketId: waiting.id, number: waiting.number, nowServing: this.nowServing },
+      data: {
+        ticketId: waiting.id,
+        number: waiting.number,
+        nowServing: this.nowServing,
+        calledAt: waiting.calledAt,
+        stats: this.stats(),
+      },
     });
     return Response.json({
       ticketId: waiting.id,
       number: waiting.number,
       nowServing: this.nowServing,
+      stats: this.stats(),
     });
   }
 
@@ -234,6 +312,8 @@ export class QueueDO extends DurableObject {
     this.tickets.clear();
     this.nowServing = null;
     this.nextNumber = 1;
+    this.serviceSamples = [];
+    this.lastServiceMs = null;
     await this.persist();
     this.broadcast({ event: "reset", data: {} });
     return Response.json({ ok: true });
