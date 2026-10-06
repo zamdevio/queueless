@@ -18,10 +18,19 @@ import {
   type QueueEvent,
 } from "../lib/api";
 import { ErrorState } from "../components/ErrorState";
+import { ConfirmDialog } from "../components/ConfirmDialog";
 import { Pagination } from "../components/Pagination";
 import { useAuth } from "../lib/auth";
 import { OperatorLogin } from "./OperatorLogin";
 import { toast } from "sonner";
+
+type ConfirmKind = "reset" | "skip" | "remove";
+
+interface ConfirmState {
+  kind: ConfirmKind;
+  ticketId?: string;
+  number?: number;
+}
 
 export function OperatorView({ queueId }: { queueId: string }) {
   const { isOperator, loading: authLoading, logout, resetSession } = useAuth();
@@ -29,6 +38,7 @@ export function OperatorView({ queueId }: { queueId: string }) {
   const [error, setError] = useState<{ message: string; retryable: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
   const [maxInput, setMaxInput] = useState("");
+  const [confirm, setConfirm] = useState<ConfirmState | null>(null);
 
   const handleAuthFailure = useCallback(
     (err: unknown) => {
@@ -104,39 +114,18 @@ export function OperatorView({ queueId }: { queueId: string }) {
     }
   }
 
-  async function handleSkip(ticketId: string) {
-    try {
-      await skipTicket(queueId, ticketId);
-      toast.success("Ticket skipped");
-    } catch (err) {
-      reportError(err);
-    }
-  }
-
-  async function handleRemove(ticketId: string) {
-    try {
-      await removeTicket(queueId, ticketId);
-      toast.success("Ticket removed");
-    } catch (err) {
-      reportError(err);
-    }
-  }
-
-  async function handleReset() {
-    if (!confirm("Reset the entire queue? This cannot be undone.")) return;
-    try {
-      await resetQueue(queueId);
-      toast.success("Queue reset");
-    } catch (err) {
-      reportError(err);
-    }
-  }
-
   async function handleSettings(e: React.FormEvent) {
     e.preventDefault();
     const max = Number(maxInput);
     if (!Number.isFinite(max) || max < 0) {
       toast.error("Max waiting must be a number ≥ 0");
+      return;
+    }
+    const waitingCount = board?.waitingCount ?? 0;
+    if (max < waitingCount) {
+      toast.error(
+        `Cannot set max to ${max} — ${waitingCount} customers are already in line. Serve or remove some first, or Reset queue to start fresh.`
+      );
       return;
     }
     try {
@@ -166,18 +155,28 @@ export function OperatorView({ queueId }: { queueId: string }) {
     }
   }
 
-  if (authLoading) {
-    return <div className="loading">Checking operator session…</div>;
+  async function runConfirmed() {
+    if (!confirm) return;
+    setConfirm(null);
+    try {
+      if (confirm.kind === "reset") {
+        await resetQueue(queueId);
+        toast.success("Queue reset");
+      } else if (confirm.kind === "skip" && confirm.ticketId) {
+        await skipTicket(queueId, confirm.ticketId);
+        toast.success("Ticket skipped");
+      } else if (confirm.kind === "remove" && confirm.ticketId) {
+        await removeTicket(queueId, confirm.ticketId);
+        toast.success("Ticket removed");
+      }
+    } catch (err) {
+      reportError(err);
+    }
   }
 
-  if (!isOperator) {
-    return <OperatorLogin />;
-  }
-
-  if (loading && !board) {
-    return <div className="loading">Loading queue {queueId}…</div>;
-  }
-
+  if (authLoading) return <div className="loading">Checking operator session…</div>;
+  if (!isOperator) return <OperatorLogin />;
+  if (loading && !board) return <div className="loading">Loading queue {queueId}…</div>;
   if (error && !board) {
     return (
       <ErrorState
@@ -196,6 +195,19 @@ export function OperatorView({ queueId }: { queueId: string }) {
   const maxWaiting = board?.settings?.maxWaiting ?? 50;
   const waitingCount = board?.waitingCount ?? waitingTickets.length;
   const stats = board?.stats;
+
+  const confirmTitle =
+    confirm?.kind === "reset"
+      ? "Reset queue?"
+      : confirm?.kind === "skip"
+        ? "Skip ticket?"
+        : "Remove ticket?";
+  const confirmMsg =
+    confirm?.kind === "reset"
+      ? `All tickets in "${queueId}" will be cleared. Waiting customers will lose their place. This cannot be undone.`
+      : confirm?.kind === "skip"
+        ? `Ticket #${confirm?.number} will be marked skipped and removed from the waiting list.`
+        : `Ticket #${confirm?.number} will be removed from the queue and marked removed.`;
 
   return (
     <div className="operator-view">
@@ -261,47 +273,47 @@ export function OperatorView({ queueId }: { queueId: string }) {
         </div>
       </div>
 
-      <div className="controls">
-        <button onClick={handleCallNext} disabled={waitingTickets.length === 0}>
-          Call next ({waitingCount} waiting)
-        </button>
-        <button onClick={handleReset}>Reset queue</button>
-      </div>
+      <div className="ops-toolbar">
+        <div className="controls">
+          <button onClick={handleCallNext} disabled={waitingTickets.length === 0}>
+            Call next ({waitingCount})
+          </button>
+          <button onClick={() => setConfirm({ kind: "reset" })}>Reset queue</button>
+        </div>
 
-      <form className="settings-row" onSubmit={handleSettings}>
-        <label htmlFor="maxWaiting">Max waiting</label>
-        <input
-          id="maxWaiting"
-          type="number"
-          min={0}
-          max={10000}
-          value={maxInput}
-          onChange={(e) => setMaxInput(e.target.value)}
-        />
-        <button type="submit" className="btn-secondary">
-          Save limit
-        </button>
-        <span className="settings-hint">
-          {waitingCount}/{maxWaiting} in line
-        </span>
-      </form>
+        <form className="settings-row" onSubmit={handleSettings}>
+          <label htmlFor="maxWaiting">Max waiting</label>
+          <input
+            id="maxWaiting"
+            type="number"
+            min={0}
+            max={10000}
+            value={maxInput}
+            onChange={(e) => setMaxInput(e.target.value)}
+          />
+          <button type="submit" className="btn-secondary">
+            Save limit
+          </button>
+        </form>
 
-      <div className="export-row">
-        <span className="export-label">Export history</span>
-        <button type="button" className="btn-secondary" onClick={() => handleExport("csv")}>
-          CSV
-        </button>
-        <button type="button" className="btn-secondary" onClick={() => handleExport("json")}>
-          JSON
-        </button>
-        <button type="button" className="btn-secondary" onClick={() => handleExport("markdown")}>
-          Markdown
-        </button>
+        <div className="export-row">
+          <span className="export-label">Export</span>
+          <button type="button" className="btn-secondary" onClick={() => handleExport("csv")}>
+            CSV
+          </button>
+          <button type="button" className="btn-secondary" onClick={() => handleExport("json")}>
+            JSON
+          </button>
+          <button type="button" className="btn-secondary" onClick={() => handleExport("markdown")}>
+            MD
+          </button>
+        </div>
       </div>
 
       {nowServing !== null && (
-        <div className="now-serving">
-          Now serving: <strong>{nowServing}</strong>
+        <div className="now-serving compact">
+          <span className="now-serving-label">Now serving</span>
+          <strong>{nowServing}</strong>
         </div>
       )}
 
@@ -339,8 +351,16 @@ export function OperatorView({ queueId }: { queueId: string }) {
                     </span>
                   </div>
                   <div className="actions">
-                    <button onClick={() => handleSkip(t.id)}>Skip</button>
-                    <button onClick={() => handleRemove(t.id)}>Remove</button>
+                    <button
+                      onClick={() => setConfirm({ kind: "skip", ticketId: t.id, number: t.number })}
+                    >
+                      Skip
+                    </button>
+                    <button
+                      onClick={() => setConfirm({ kind: "remove", ticketId: t.id, number: t.number })}
+                    >
+                      Remove
+                    </button>
                   </div>
                 </li>
               ))}
@@ -375,6 +395,17 @@ export function OperatorView({ queueId }: { queueId: string }) {
           )}
         </Pagination>
       </div>
+
+      <ConfirmDialog
+        open={confirm !== null}
+        title={confirmTitle}
+        message={confirmMsg}
+        confirmLabel={
+          confirm?.kind === "reset" ? "Reset queue" : confirm?.kind === "skip" ? "Skip ticket" : "Remove ticket"
+        }
+        onConfirm={runConfirmed}
+        onCancel={() => setConfirm(null)}
+      />
     </div>
   );
 }

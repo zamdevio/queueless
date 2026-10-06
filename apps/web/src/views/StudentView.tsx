@@ -16,6 +16,7 @@ import {
 } from "../lib/api";
 import { getDeviceId } from "../lib/device";
 import { ErrorState } from "../components/ErrorState";
+import { ConfirmDialog } from "../components/ConfirmDialog";
 import { IconAlert } from "../components/Icons";
 import { Pagination } from "../components/Pagination";
 
@@ -27,6 +28,7 @@ export function StudentView({ queueId }: { queueId: string }) {
   const [joining, setJoining] = useState(false);
   const [displayName, setDisplayName] = useState("");
   const [calledOpen, setCalledOpen] = useState(false);
+  const [leaveOpen, setLeaveOpen] = useState(false);
   const calledRef = useRef(false);
 
   const loadBoard = useCallback(async () => {
@@ -125,6 +127,12 @@ export function StudentView({ queueId }: { queueId: string }) {
 
   async function handleLeave() {
     if (!ticket) return;
+    setLeaveOpen(true);
+  }
+
+  async function confirmLeave() {
+    if (!ticket) return;
+    setLeaveOpen(false);
     try {
       await leaveQueue(queueId, ticket.id);
       setTicket(null);
@@ -308,6 +316,15 @@ export function StudentView({ queueId }: { queueId: string }) {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={leaveOpen}
+        title="Leave queue?"
+        message={`Ticket #${ticket?.number} will be removed from the waiting list. You cannot undo this.`}
+        confirmLabel="Leave queue"
+        onConfirm={confirmLeave}
+        onCancel={() => setLeaveOpen(false)}
+      />
     </div>
   );
 }

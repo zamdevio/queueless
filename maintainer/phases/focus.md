@@ -3,7 +3,7 @@
 **Rule:** Focus now = **max 3**. Everything else stays queued until a Focus slot frees.
 
 **Shipped receipts:** [`../shipped/README.md`](../shipped/README.md)  
-**Course pack:** [`course-management-pack.md`](./course-management-pack.md)
+**Next:** [`course-management-pack.md`](./course-management-pack.md) — **after** UI polish slice
 
 ---
 
@@ -11,36 +11,24 @@
 
 | Priority | Vertical | Notes |
 |----------|----------|-------|
-| 1 | RateLimitDO | Per-IP login limiter in DO (done this slice) |
-| 2 | Drop D1 | No DB; simple CF resources only; docs updated |
-| 3 | Course pack (next) | Management Pack after user confirms format |
+| 1 | Confirm dialogs | Shared `ConfirmDialog` for leave / skip / remove / reset |
+| 2 | Max waiting guard | Deny save when new max &lt; waiting count; operator must serve/remove or reset |
+| 3 | Operator layout | Restructured toolbar (call · reset · limit · export), compact now-serving |
 
 ## Queued — do not start
 
 | # | Item | Why parked |
 |---|------|------------|
-| 1 | Course Management Pack fill | Wait for user go |
-| 2 | Full RBAC / accounts | **Skipped for course MVP** — PIN is enough |
-| 3 | Join abuse rate-limit | Stretch |
+| 1 | Course Management Pack fill | **After this UI slice** |
+| 2 | Full RBAC / accounts | Skipped for course MVP |
+
+## Notes
+
+- **One primary system/layout only** — no legacy dual paths.
+- Skip uses the same confirm dialog as remove (explicit action; not silent).
+- Device ticket restore, pagination, export, board page — already shipped.
 
 ## Deployed
 
 - Worker: `https://queueless.zamdevio.workers.dev`
 - Pages: `https://thequeueless.pages.dev`
-- GH: `https://github.com/zamdevio/queueless`
-
-## Config
-
-| App | File | Keys |
-|-----|------|------|
-| Web | `apps/web/.env` / `.env.production` | `VITE_API_URL` |
-| Worker | `apps/worker/wrangler.jsonc` | `ALLOWED_ORIGINS`, `ENVIRONMENT` |
-| Secrets | `.dev.vars` / `wrangler secret put` | `OPERATOR_PIN` |
-
-## Theme
-
-First visit follows **browser** (`prefers-color-scheme`). Preference is stored in `localStorage` only after the user toggles theme.
-
-## D1 / DB
-
-**Removed.** Live state is in Durable Objects (`QueueDO`, `RateLimitDO`). Deploy needs only Workers + Pages + `OPERATOR_PIN`.

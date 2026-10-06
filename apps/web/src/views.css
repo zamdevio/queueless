@@ -1241,3 +1241,82 @@
 .history .queue-list-header {
   border-bottom: 1px solid var(--color-border);
 }
+
+/* ===== Shared confirm dialog + ops toolbar + compact now-serving ===== */
+.dialog-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.dialog-actions .btn-primary,
+.dialog-actions .btn-secondary,
+.dialog-actions .btn-danger {
+  flex: 1;
+}
+
+.btn-danger {
+  padding: 10px 20px;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  background-color: var(--color-error);
+  color: white;
+}
+
+.btn-danger:hover {
+  filter: brightness(1.05);
+}
+
+.ops-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 16px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.ops-toolbar .controls {
+  margin-bottom: 0;
+}
+
+.ops-toolbar .settings-row {
+  margin-bottom: 0;
+  border: none;
+  padding: 0;
+  background: transparent;
+}
+
+.ops-toolbar .export-row {
+  margin-bottom: 0;
+}
+
+.now-serving.compact {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 14px 20px;
+  margin-bottom: 20px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, var(--color-success), #059669);
+  color: white;
+}
+
+.now-serving.compact .now-serving-label {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.9;
+}
+
+.now-serving.compact strong {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
+}
