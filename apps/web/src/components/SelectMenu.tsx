@@ -67,7 +67,7 @@ export function SelectMenu({ value, options, onChange, ariaLabel }: SelectMenuPr
   );
 }
 
-/** Copy-to-clipboard button for command blocks. */
+/** Copy-to-clipboard button — stops propagation so it never toggles a parent. */
 export function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) {
   const [copied, setCopied] = useState(false);
 
@@ -106,8 +106,8 @@ export function CommandBlock({ code, title }: { code: string; title?: string }) 
 }
 
 /**
- * Collapsible command — header (chevron + title + Copy) always visible;
- * click header to toggle body. Body hidden by default.
+ * Collapsible command — entire header row toggles open/closed.
+ * Copy always visible and never toggles (stopPropagation).
  */
 export function CollapsibleCommand({
   title,
@@ -122,16 +122,23 @@ export function CollapsibleCommand({
 
   return (
     <div className="command-block">
-      <div className="command-block-header">
-        <button
-          type="button"
-          className="command-block-toggle"
-          onClick={() => setOpen((o) => !o)}
-          aria-expanded={open}
-        >
+      <div
+        className="command-block-header command-block-header-click"
+        onClick={() => setOpen((o) => !o)}
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setOpen((o) => !o);
+          }
+        }}
+      >
+        <span className="command-block-title">
           <span className="command-block-chev">{open ? "▾" : "▸"}</span>
-          <span className="command-block-title">{title}</span>
-        </button>
+          {title}
+        </span>
         <CopyButton text={code} />
       </div>
       {open && <pre className="command-block-pre">{code}</pre>}

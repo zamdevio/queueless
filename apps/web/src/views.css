@@ -1851,3 +1851,18 @@
     border-top: none;
   }
 }
+
+/* Clickable collapsible header */
+.command-block-header-click {
+  cursor: pointer;
+  user-select: none;
+}
+
+.command-block-header-click:hover {
+  background: var(--color-border);
+}
+
+.command-block-header .copy-btn {
+  flex-shrink: 0;
+  pointer-events: auto;
+}

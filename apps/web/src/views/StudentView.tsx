@@ -30,6 +30,7 @@ export function StudentView({ queueId }: { queueId: string }) {
   const [displayName, setDisplayName] = useState("");
   const [calledOpen, setCalledOpen] = useState(false);
   const [leaveOpen, setLeaveOpen] = useState(false);
+  const [leaveBusy, setLeaveBusy] = useState(false);
   const [servingBusy, setServingBusy] = useState(false);
   const calledRef = useRef(false);
 
@@ -174,18 +175,23 @@ export function StudentView({ queueId }: { queueId: string }) {
   }
 
   async function confirmLeave() {
-    if (!ticket) return;
+    if (!ticket || leaveBusy) return;
+    setLeaveBusy(true);
     setLeaveOpen(false);
+    const leavingId = ticket.id;
+    const leavingNum = ticket.number;
     try {
-      await leaveQueue(queueId, ticket.id);
+      await leaveQueue(queueId, leavingId);
       setTicket(null);
-      toast.success("Left the queue");
+      toast.success(`Ticket #${leavingNum} left the queue`);
       await loadBoard();
     } catch (err) {
       setError({
         message: errMessage(err, "Failed to leave."),
         retryable: errRetryable(err),
       });
+    } finally {
+      setLeaveBusy(false);
     }
   }
 
@@ -319,8 +325,12 @@ export function StudentView({ queueId }: { queueId: string }) {
               )}
               {ticket.state === "waiting" && (
                 <div className="ticket-fact ticket-fact-action">
-                  <button className="btn-secondary" onClick={handleLeave}>
-                    Leave queue
+                  <button
+                    className="btn-secondary"
+                    onClick={handleLeave}
+                    disabled={leaveBusy}
+                  >
+                    {leaveBusy ? "Leaving…" : "Leave queue"}
                   </button>
                 </div>
               )}

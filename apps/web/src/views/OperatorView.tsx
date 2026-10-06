@@ -41,6 +41,8 @@ export function OperatorView({ queueId }: { queueId: string }) {
   const [loading, setLoading] = useState(true);
   const [maxInput, setMaxInput] = useState("");
   const [confirm, setConfirm] = useState<ConfirmState | null>(null);
+  /** Locks mutating actions while a request is in flight. */
+  const [busy, setBusy] = useState(false);
 
   const handleAuthFailure = useCallback(
     (err: unknown) => {
@@ -107,16 +109,21 @@ export function OperatorView({ queueId }: { queueId: string }) {
   }
 
   async function handleCallNext() {
+    if (busy) return;
+    setBusy(true);
     try {
       const called = await callNext(queueId);
       if (called) toast.success(`Called ticket #${called.number}`);
       else toast.info("No one waiting to call.");
     } catch (err) {
       reportError(err);
+    } finally {
+      setBusy(false);
     }
   }
 
   async function handleSettings() {
+    if (busy) return;
     const max = Number(maxInput);
     if (!Number.isFinite(max) || max < 0) {
       toast.error("Max waiting must be a number ≥ 0");
@@ -129,11 +136,14 @@ export function OperatorView({ queueId }: { queueId: string }) {
       );
       return;
     }
+    setBusy(true);
     try {
       await updateQueueSettings(queueId, max);
       toast.success(`Queue limit set to ${max}`);
     } catch (err) {
       reportError(err);
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -157,21 +167,24 @@ export function OperatorView({ queueId }: { queueId: string }) {
   }
 
   async function runConfirmed() {
-    if (!confirm) return;
+    if (!confirm || busy) return;
     setConfirm(null);
+    setBusy(true);
     try {
       if (confirm.kind === "reset") {
         await resetQueue(queueId);
         toast.success("Queue reset");
       } else if (confirm.kind === "skip" && confirm.ticketId) {
         await skipTicket(queueId, confirm.ticketId);
-        toast.success("Ticket skipped");
+        toast.success(`Ticket #${confirm.number ?? ""} skipped`);
       } else if (confirm.kind === "remove" && confirm.ticketId) {
         await removeTicket(queueId, confirm.ticketId);
-        toast.success("Ticket removed");
+        toast.success(`Ticket #${confirm.number ?? ""} removed`);
       }
     } catch (err) {
       reportError(err);
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -244,13 +257,16 @@ export function OperatorView({ queueId }: { queueId: string }) {
               <button
                 className="btn-primary ops-hero-btn"
                 onClick={handleCallNext}
-                disabled={waitingTickets.length === 0}
+                disabled={waitingTickets.length === 0 || busy}
               >
-                Call next ({waitingCount})
+                {busy ? "Working…" : `Call next (${waitingCount})`}
               </button>
               <button
                 className="btn-secondary ops-hero-btn"
-                onClick={() => setConfirm({ kind: "reset" })}
+                onClick={() => {
+                  if (!busy) setConfirm({ kind: "reset" });
+                }}
+                disabled={busy}
               >
                 Reset queue
               </button>
@@ -292,16 +308,20 @@ export function OperatorView({ queueId }: { queueId: string }) {
                       </div>
                       <div className="actions">
                         <button
-                          onClick={() =>
-                            setConfirm({ kind: "skip", ticketId: t.id, number: t.number })
-                          }
+                          disabled={busy}
+                          onClick={() => {
+                            if (busy) return;
+                            setConfirm({ kind: "skip", ticketId: t.id, number: t.number });
+                          }}
                         >
                           Skip
                         </button>
                         <button
-                          onClick={() =>
-                            setConfirm({ kind: "remove", ticketId: t.id, number: t.number })
-                          }
+                          disabled={busy}
+                          onClick={() => {
+                            if (busy) return;
+                            setConfirm({ kind: "remove", ticketId: t.id, number: t.number });
+                          }}
                         >
                           Remove
                         </button>
@@ -407,8 +427,13 @@ export function OperatorView({ queueId }: { queueId: string }) {
                 onChange={(e) => setMaxInput(e.target.value)}
               />
             </label>
-            <button type="button" className="btn-primary ops-save" onClick={handleSettings}>
-              Save limit
+            <button
+              type="button"
+              className="btn-primary ops-save"
+              onClick={handleSettings}
+              disabled={busy}
+            >
+              {busy ? "Saving…" : "Save limit"}
             </button>
 
             <div className="ops-export-block">
