@@ -26,7 +26,7 @@
 		}
 	],
 	"vars": {
-		"ENVIRONMENT": "development",
+		"ENVIRONMENT": "production",
 		"ALLOWED_ORIGINS": "http://localhost:5173,https://thequeueless.pages.dev"
 	}
 }

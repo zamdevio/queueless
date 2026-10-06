@@ -72,7 +72,6 @@ app.get("/", (c) =>
     ok: true,
     service: "queueless",
     environment: c.env.ENVIRONMENT ?? "unknown",
-    allowedOrigins: parseAllowedOrigins(c.env),
   })
 );
 
