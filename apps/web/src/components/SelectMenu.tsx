@@ -88,15 +88,18 @@ export function CopyButton({ text, label = "Copy" }: { text: string; label?: str
   );
 }
 
-/** Command block with copy button. */
+/**
+ * Highlighter-style commands — no boxed container.
+ * Soft accent bar + highlighted command text, copy button on the side.
+ */
 export function CommandBlock({ code, title }: { code: string; title?: string }) {
   return (
-    <div className="command-block">
-      {title && <div className="command-block-title">{title}</div>}
-      <div className="command-block-body">
-        <pre>{code}</pre>
+    <div className="command-hl">
+      <div className="command-hl-head">
+        {title && <span className="command-hl-title">{title}</span>}
         <CopyButton text={code} />
       </div>
+      <pre className="command-hl-pre">{code}</pre>
     </div>
   );
 }

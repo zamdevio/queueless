@@ -327,7 +327,7 @@ export function StudentView({ queueId }: { queueId: string }) {
                 onClick={handleMarkServed}
                 disabled={servingBusy}
               >
-                {servingBusy ? "Saving…" : "I&apos;ve been served"}
+                {servingBusy ? "Saving…" : "I've been served"}
               </button>
             </div>
           )}
