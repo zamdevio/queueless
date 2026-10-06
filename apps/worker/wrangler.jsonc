@@ -18,7 +18,11 @@
 	"migrations": [
 		{
 			"tag": "v1",
-			"new_sqlite_classes": ["QueueDO", "RateLimitDO"]
+			"new_sqlite_classes": ["QueueDO"]
+		},
+		{
+			"tag": "v2",
+			"new_sqlite_classes": ["RateLimitDO"]
 		}
 	],
 	"vars": {
