@@ -22,6 +22,7 @@ Fields already on ticket: `name`, `createdAt`, `calledAt`, `meta.{country,city,u
 
 | Item | Idea |
 |------|------|
+| **Mark called ticket as served** | Operator button: "Mark served" for the **current now-serving ticket** — works when queue is empty (no next to call) **and** when more tickets are waiting but nobody has been marked done. Clears `nowServing` / moves ticket to `served` via existing `serve` route. |
 | Now-serving flash | Highlight banner when call-next lands (SSE already fires) |
 | Empty states | Operator: "No one waiting — Call next disabled"; student: "Queue is empty" |
 | History density | Times + country in one row |
@@ -60,7 +61,8 @@ Fields already on ticket: `name`, `createdAt`, `calledAt`, `meta.{country,city,u
 ## Next task
 
 1. Slice A: student list number-only + operator history richer
-2. Slice B: board name toggle + join toast ETA + Guide limits section
-3. Then Management Pack (course deliverable)
+2. **Slice B: operator "Mark served" for current now-serving ticket** (empty queue **and** when next tickets exist but current not marked done)
+3. Slice C: board name toggle + join toast ETA + Guide limits section
+4. Then Management Pack (course deliverable)
 
 Promote one add-on at a time via `maintainer/phases/focus.md`.
