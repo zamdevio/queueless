@@ -2,6 +2,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { useAuth } from "../lib/auth";
 
+/** PIN login card — shown when the operator wants real backend control. */
 export function OperatorLogin() {
   const { login } = useAuth();
   const [pin, setPin] = useState("");

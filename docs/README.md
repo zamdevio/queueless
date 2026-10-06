@@ -1,13 +1,13 @@
 # Docs — QueueLess
 
-Public / product documentation. Keep this tree free of sprint language.
+Public / product documentation.
 
 | Area | Path |
 |------|------|
 | Course | [`course/`](./course/) — Assignment 1 idea proposal |
-| Product | [`product/`](./product/) — purpose, scope |
+| Product | [`product/`](./product/) — purpose, scope, policies |
 | Architecture | [`architecture/`](./architecture/) — intended design |
 
-**In-app docs:** Guide · Development · About — served from the SPA under `/docs/*` (sidebar).
+**In-app docs:** Guide · Development · About — SPA under `/docs/*`.
 
-**Course vs product:** Assignment 1 is an idea proposal, not a shipped-app requirement. The live system on Pages is the feasibility demo.
+**Operator demo:** visitors can open `/operator/{queue}` for a full layout preview; PIN unlocks real backend actions.

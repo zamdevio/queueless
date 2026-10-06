@@ -21,6 +21,7 @@ import { ErrorState } from "../components/ErrorState";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { Pagination } from "../components/Pagination";
 import { useAuth } from "../lib/auth";
+import { OperatorDemoView } from "./OperatorDemoView";
 import { OperatorLogin } from "./OperatorLogin";
 import { toast } from "sonner";
 
@@ -34,6 +35,7 @@ interface ConfirmState {
 
 export function OperatorView({ queueId }: { queueId: string }) {
   const { isOperator, loading: authLoading, logout, resetSession } = useAuth();
+  const [showLogin, setShowLogin] = useState(false);
   const [board, setBoard] = useState<Board | null>(null);
   const [error, setError] = useState<{ message: string; retryable: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -174,7 +176,12 @@ export function OperatorView({ queueId }: { queueId: string }) {
   }
 
   if (authLoading) return <div className="loading">Checking operator session…</div>;
-  if (!isOperator) return <OperatorLogin />;
+  if (!isOperator) {
+    if (showLogin) return <OperatorLogin />;
+    return (
+      <OperatorDemoView queueId={queueId} onSignIn={() => setShowLogin(true)} />
+    );
+  }
   if (loading && !board) return <div className="loading">Loading queue {queueId}…</div>;
   if (error && !board) {
     return (

@@ -29,7 +29,7 @@ Fill the lecturer **Management Pack** for QueueLess — not more product feature
 | Milestones | `maintainer/phases/focus.md` + `maintainer/shipped/README.md` |
 | Risks | Auth rate limit, CORS origins, free-tier CF, DO concurrency |
 | Change log | Architecture picks + auth/env changes in git history |
-| Status | Tracker: Initiation–Testing done; Deployment/Operations in progress (~83%) |
+| Status | Tracker: core system built & deployed — product MVP **complete** (docs + management pack remaining) |
 
 ## Working style
 

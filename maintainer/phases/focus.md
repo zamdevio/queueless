@@ -2,8 +2,7 @@
 
 **Rule:** Focus now = **max 3**. Everything else stays queued until a Focus slot frees.
 
-**Shipped receipts:** [`../shipped/README.md`](../shipped/README.md)  
-**Next:** [`course-management-pack.md`](./course-management-pack.md) — **after** UI polish slice
+**Shipped receipts:** [`../shipped/README.md`](../shipped/README.md)
 
 ---
 
@@ -11,22 +10,23 @@
 
 | Priority | Vertical | Notes |
 |----------|----------|-------|
-| 1 | Confirm dialogs | Shared `ConfirmDialog` for leave / skip / remove / reset |
-| 2 | Max waiting guard | Deny save when new max &lt; waiting count; operator must serve/remove or reset |
-| 3 | Operator layout | Restructured toolbar (call · reset · limit · export), compact now-serving |
+| 1 | Operator demo mode | Full layout preview without PIN; backend actions toast “disabled” |
+| 2 | Docs refresh | README / product / maintainer — drop stale D1/83% claims |
+| 3 | Course pack | Next after this slice — see [`course-management-pack.md`](./course-management-pack.md) |
 
 ## Queued — do not start
 
 | # | Item | Why parked |
 |---|------|------------|
-| 1 | Course Management Pack fill | **After this UI slice** |
+| 1 | Course Management Pack fill | After demo mode + docs refresh |
 | 2 | Full RBAC / accounts | Skipped for course MVP |
 
-## Notes
+## Shipped this round
 
-- **One primary system/layout only** — no legacy dual paths.
-- Skip uses the same confirm dialog as remove (explicit action; not silent).
-- Device ticket restore, pagination, export, board page — already shipped.
+- Confirm dialogs · max-waiting guard · operator Claude-style grid
+- Serve + join-again · per-page dropdown 5/10/15/20
+- Device ticket restore · history export · board page · policies script
+- Operator demo mode (no PIN → preview; Sign in with PIN → real backend)
 
 ## Deployed
 
