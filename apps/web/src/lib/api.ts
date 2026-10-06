@@ -1,5 +1,5 @@
 export type QueueEvent = {
-  event: "join" | "leave" | "call" | "skip" | "remove" | "reset" | "snapshot" | "settings";
+  event: "join" | "leave" | "call" | "skip" | "remove" | "serve" | "reset" | "snapshot" | "settings";
   data: any;
 };
 
@@ -248,6 +248,11 @@ export async function skipTicket(queueId: string, ticketId: string): Promise<voi
   await apiFetch(`/api/queue/${queueId}/skip/${ticketId}`, { method: "POST" });
 }
 
+/** Customer marks their ticket as served. */
+export async function markServed(queueId: string, ticketId: string): Promise<void> {
+  await apiFetch(`/api/queue/${queueId}/serve/${ticketId}`, { method: "POST" });
+}
+
 export async function removeTicket(queueId: string, ticketId: string): Promise<void> {
   await apiFetch(`/api/queue/${queueId}/remove/${ticketId}`, { method: "POST" });
 }
@@ -358,6 +363,14 @@ export function applyEvent(prev: Board | null, event: QueueEvent): Board | null 
         waitingCount: Math.max((prev.waitingCount ?? 1) - 1, 0),
         tickets: prev.tickets.map((t) =>
           t.id === event.data.ticketId ? { ...t, state: "skipped" as const } : t
+        ),
+      };
+    case "serve":
+      return {
+        ...prev,
+        waitingCount: Math.max((prev.waitingCount ?? 1) - 1, 0),
+        tickets: prev.tickets.map((t) =>
+          t.id === event.data.ticketId ? { ...t, state: "served" as const } : t
         ),
       };
     case "remove":

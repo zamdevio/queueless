@@ -119,6 +119,14 @@ queue.post("/:queueId/skip/:ticketId", requireOperator, async (c) => {
   return queueDO.fetch(new Request(`https://queue/skip/${ticketId}`, { method: "POST" }));
 });
 
+// Customer acknowledges service — public (device ticket only)
+queue.post("/:queueId/serve/:ticketId", async (c) => {
+  const queueId = c.req.param("queueId")!;
+  const ticketId = c.req.param("ticketId")!;
+  const queueDO = getQueueDO(c, queueId);
+  return queueDO.fetch(new Request(`https://queue/serve/${ticketId}`, { method: "POST" }));
+});
+
 queue.post("/:queueId/remove/:ticketId", requireOperator, async (c) => {
   const queueId = c.req.param("queueId")!;
   const ticketId = c.req.param("ticketId")!;

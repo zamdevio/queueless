@@ -51,6 +51,7 @@ export interface QueueEvent {
     | "leave"
     | "call"
     | "skip"
+    | "serve"
     | "remove"
     | "reset"
     | "snapshot"
@@ -193,6 +194,8 @@ export class QueueDO extends DurableObject {
             return this.handleCallNext();
           case "skip":
             return this.handleSkip(param || "");
+          case "serve":
+            return this.handleServe(param || "");
           case "remove":
             return this.handleRemove(param || "");
           case "reset":
@@ -407,6 +410,24 @@ export class QueueDO extends DurableObject {
     ticket.state = "skipped";
     await this.persist();
     this.broadcast({ event: "skip", data: { ticketId, number: ticket.number } });
+    return Response.json({ ok: true });
+  }
+
+  /** Customer acknowledges they were served — frees the device to join again. */
+  private async handleServe(ticketId: string): Promise<Response> {
+    const ticket = this.tickets.get(ticketId);
+    if (!ticket) {
+      return new Response(JSON.stringify({ error: "Ticket not found" }), { status: 404 });
+    }
+    if (ticket.state !== "called" && ticket.state !== "waiting") {
+      return new Response(
+        JSON.stringify({ error: "Ticket is not active" }),
+        { status: 409 }
+      );
+    }
+    ticket.state = "served";
+    await this.persist();
+    this.broadcast({ event: "serve", data: { ticketId, number: ticket.number } });
     return Response.json({ ok: true });
   }
 

@@ -1320,3 +1320,87 @@
   font-weight: 800;
   line-height: 1;
 }
+
+/* ===== Operator toolbar row + student aftermath + success dialog ===== */
+.ops-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.ops-toolbar-main {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.ops-toolbar-main .ops-call {
+  min-width: 140px;
+}
+
+.ops-toolbar-side {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-left: auto;
+}
+
+.ops-limit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.ops-limit input {
+  width: 64px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-tertiary);
+  color: var(--color-text);
+  font-size: 13px;
+}
+
+.ops-export {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ticket-called-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.ticket-called-row .ticket-called,
+.ticket-called-row .ticket-served {
+  margin: 0;
+  font-weight: 600;
+}
+
+.ticket-served {
+  color: var(--color-success);
+}
+
+.dialog-icon-success {
+  color: var(--color-success);
+}
+
+.dialog-icon-success svg {
+  color: var(--color-success);
+}

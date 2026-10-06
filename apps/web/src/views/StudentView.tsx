@@ -10,6 +10,7 @@ import {
   errRetryable,
   formatEtaMs,
   findMyTicket,
+  markServed,
   type Ticket,
   type Board,
   type QueueEvent,
@@ -17,7 +18,7 @@ import {
 import { getDeviceId } from "../lib/device";
 import { ErrorState } from "../components/ErrorState";
 import { ConfirmDialog } from "../components/ConfirmDialog";
-import { IconAlert } from "../components/Icons";
+import { IconCheck } from "../components/Icons";
 import { Pagination } from "../components/Pagination";
 
 export function StudentView({ queueId }: { queueId: string }) {
@@ -29,6 +30,7 @@ export function StudentView({ queueId }: { queueId: string }) {
   const [displayName, setDisplayName] = useState("");
   const [calledOpen, setCalledOpen] = useState(false);
   const [leaveOpen, setLeaveOpen] = useState(false);
+  const [servingBusy, setServingBusy] = useState(false);
   const calledRef = useRef(false);
 
   const loadBoard = useCallback(async () => {
@@ -146,6 +148,26 @@ export function StudentView({ queueId }: { queueId: string }) {
     }
   }
 
+  /** After service: mark ticket served, then this device can join again. */
+  async function handleMarkServed() {
+    if (!ticket) return;
+    setServingBusy(true);
+    try {
+      await markServed(queueId, ticket.id);
+      setTicket(null);
+      calledRef.current = false;
+      toast.success("Thanks — you can join the queue again");
+      await loadBoard();
+    } catch (err) {
+      setError({
+        message: errMessage(err, "Could not mark ticket as served."),
+        retryable: errRetryable(err),
+      });
+    } finally {
+      setServingBusy(false);
+    }
+  }
+
   if (loading && !ticket && !board) {
     return <div className="loading">Loading queue {queueId}…</div>;
   }
@@ -257,12 +279,29 @@ export function StudentView({ queueId }: { queueId: string }) {
             </div>
           </div>
           {ticket.state === "called" && (
-            <p className="ticket-called">It&apos;s your turn — head to the counter.</p>
+            <div className="ticket-called-row">
+              <p className="ticket-called">It&apos;s your turn — head to the counter.</p>
+              <button
+                className="btn-primary"
+                onClick={handleMarkServed}
+                disabled={servingBusy}
+              >
+                {servingBusy ? "Saving…" : "I&apos;ve been served"}
+              </button>
+            </div>
           )}
           {ticket.state === "waiting" && (
             <div className="ticket-card-actions">
               <button className="btn-secondary" onClick={handleLeave}>
                 Leave queue
+              </button>
+            </div>
+          )}
+          {ticket.state === "served" && (
+            <div className="ticket-called-row">
+              <p className="ticket-served">Ticket #{ticket.number} — served.</p>
+              <button className="btn-primary" onClick={join}>
+                Join queue again
               </button>
             </div>
           )}
@@ -302,8 +341,8 @@ export function StudentView({ queueId }: { queueId: string }) {
       {calledOpen && ticket && (
         <div className="dialog-backdrop" role="dialog" aria-modal="true">
           <div className="dialog-panel">
-            <div className="dialog-icon">
-              <IconAlert size={40} />
+            <div className="dialog-icon dialog-icon-success">
+              <IconCheck size={40} />
             </div>
             <h2>It&apos;s your turn</h2>
             <p>

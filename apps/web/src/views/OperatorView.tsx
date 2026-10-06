@@ -114,8 +114,8 @@ export function OperatorView({ queueId }: { queueId: string }) {
     }
   }
 
-  async function handleSettings(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSettings(e?: React.FormEvent) {
+    e?.preventDefault();
     const max = Number(maxInput);
     if (!Number.isFinite(max) || max < 0) {
       toast.error("Max waiting must be a number ≥ 0");
@@ -135,6 +135,8 @@ export function OperatorView({ queueId }: { queueId: string }) {
       reportError(err);
     }
   }
+
+  const handleSettingsBtn = () => handleSettings();
 
   async function handleExport(format: "csv" | "json" | "markdown") {
     try {
@@ -274,39 +276,45 @@ export function OperatorView({ queueId }: { queueId: string }) {
       </div>
 
       <div className="ops-toolbar">
-        <div className="controls">
-          <button onClick={handleCallNext} disabled={waitingTickets.length === 0}>
+        <div className="ops-toolbar-main">
+          <button
+            className="btn-primary ops-call"
+            onClick={handleCallNext}
+            disabled={waitingTickets.length === 0}
+          >
             Call next ({waitingCount})
           </button>
-          <button onClick={() => setConfirm({ kind: "reset" })}>Reset queue</button>
+          <button className="btn-secondary" onClick={() => setConfirm({ kind: "reset" })}>
+            Reset
+          </button>
         </div>
-
-        <form className="settings-row" onSubmit={handleSettings}>
-          <label htmlFor="maxWaiting">Max waiting</label>
-          <input
-            id="maxWaiting"
-            type="number"
-            min={0}
-            max={10000}
-            value={maxInput}
-            onChange={(e) => setMaxInput(e.target.value)}
-          />
-          <button type="submit" className="btn-secondary">
+        <div className="ops-toolbar-side">
+          <label className="ops-limit" htmlFor="maxWaiting">
+            Max waiting
+            <input
+              id="maxWaiting"
+              type="number"
+              min={0}
+              max={10000}
+              value={maxInput}
+              onChange={(e) => setMaxInput(e.target.value)}
+            />
+          </label>
+          <button type="button" className="btn-secondary" onClick={handleSettingsBtn}>
             Save limit
           </button>
-        </form>
-
-        <div className="export-row">
-          <span className="export-label">Export</span>
-          <button type="button" className="btn-secondary" onClick={() => handleExport("csv")}>
-            CSV
-          </button>
-          <button type="button" className="btn-secondary" onClick={() => handleExport("json")}>
-            JSON
-          </button>
-          <button type="button" className="btn-secondary" onClick={() => handleExport("markdown")}>
-            MD
-          </button>
+          <div className="ops-export">
+            <span className="export-label">Export</span>
+            <button type="button" className="btn-secondary" onClick={() => handleExport("csv")}>
+              CSV
+            </button>
+            <button type="button" className="btn-secondary" onClick={() => handleExport("json")}>
+              JSON
+            </button>
+            <button type="button" className="btn-secondary" onClick={() => handleExport("markdown")}>
+              MD
+            </button>
+          </div>
         </div>
       </div>
 
