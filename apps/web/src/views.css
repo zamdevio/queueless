@@ -1735,33 +1735,64 @@
   border-color: var(--color-border-hover);
 }
 
-/* ===== Highlighter-style commands (no boxed container) ===== */
-.command-hl {
-  margin: 8px 0 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+/* ===== Code-block commands (header + copy + content) ===== */
+.command-block {
+  margin: 8px 0 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--color-bg-secondary);
 }
 
-.command-hl-head {
+.command-block-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--color-bg-tertiary);
+  border-bottom: 1px solid var(--color-border);
 }
 
-.command-hl-title {
+.command-block-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  min-width: 0;
+  text-align: left;
+  padding: 0;
+}
+
+.command-block-toggle:hover {
+  color: var(--color-text);
+}
+
+.command-block-chev {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.command-block-title {
   font-size: 13px;
   font-weight: 600;
   color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.command-hl-pre {
+.command-block-pre {
   margin: 0;
-  padding: 10px 14px;
+  padding: 12px 14px;
   border-left: 3px solid var(--color-primary);
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-  background: linear-gradient(90deg, rgba(37, 99, 235, 0.14), rgba(37, 99, 235, 0.04) 55%, transparent);
+  background: linear-gradient(90deg, rgba(37, 99, 235, 0.12), rgba(37, 99, 235, 0.03) 55%, transparent);
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
   font-size: 13px;
   line-height: 1.65;
@@ -1770,6 +1801,53 @@
   word-break: break-word;
 }
 
-.command-hl-pre::selection {
+.command-block-pre::selection {
   background: rgba(37, 99, 235, 0.35);
+}
+
+/* Leave queue lives in ticket facts row */
+.ticket-fact-action {
+  align-self: flex-end;
+  margin-left: auto;
+}
+
+@media (max-width: 640px) {
+  .ticket-fact-action {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .ticket-fact-action .btn-secondary {
+    width: 100%;
+  }
+}
+
+/* Mobile header theme toggle */
+.mobile-theme-btn {
+  margin-left: auto;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.mobile-theme-btn:hover {
+  background-color: var(--color-bg-tertiary);
+}
+
+/* Hide sidebar footer theme/collapse on small screens (mobile sheet) */
+@media (max-width: 1023px) {
+  .sidebar-footer .footer-actions {
+    display: none !important;
+  }
+
+  .mobile-sheet .sidebar-footer {
+    border-top: none;
+  }
 }

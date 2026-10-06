@@ -317,6 +317,13 @@ export function StudentView({ queueId }: { queueId: string }) {
                   <span className="ticket-fact-value">{nowServing}</span>
                 </div>
               )}
+              {ticket.state === "waiting" && (
+                <div className="ticket-fact ticket-fact-action">
+                  <button className="btn-secondary" onClick={handleLeave}>
+                    Leave queue
+                  </button>
+                </div>
+              )}
             </div>
           </div>
           {ticket.state === "called" && (
@@ -328,13 +335,6 @@ export function StudentView({ queueId }: { queueId: string }) {
                 disabled={servingBusy}
               >
                 {servingBusy ? "Saving…" : "I've been served"}
-              </button>
-            </div>
-          )}
-          {ticket.state === "waiting" && (
-            <div className="ticket-card-actions">
-              <button className="btn-secondary" onClick={handleLeave}>
-                Leave queue
               </button>
             </div>
           )}

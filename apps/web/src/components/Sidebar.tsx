@@ -295,6 +295,15 @@ export function Sidebar({
           <span className="logo-icon">Q</span>
           <span className="logo-text">QueueLess</span>
         </button>
+        <button
+          type="button"
+          className="mobile-theme-btn"
+          onClick={toggleTheme}
+          title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          aria-label="Toggle theme"
+        >
+          {theme === "dark" ? <IconSun size={18} /> : <IconMoon size={18} />}
+        </button>
       </header>
 
       <div

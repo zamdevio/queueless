@@ -75,7 +75,8 @@ export function CopyButton({ text, label = "Copy" }: { text: string; label?: str
     <button
       type="button"
       className="copy-btn"
-      onClick={() => {
+      onClick={(e) => {
+        e.stopPropagation();
         navigator.clipboard.writeText(text).then(() => {
           setCopied(true);
           setTimeout(() => setCopied(false), 1500);
@@ -89,17 +90,51 @@ export function CopyButton({ text, label = "Copy" }: { text: string; label?: str
 }
 
 /**
- * Highlighter-style commands — no boxed container.
- * Soft accent bar + highlighted command text, copy button on the side.
+ * Standard code-block: header bar (title + copy) with bg + divider,
+ * then highlighted command content.
  */
 export function CommandBlock({ code, title }: { code: string; title?: string }) {
   return (
-    <div className="command-hl">
-      <div className="command-hl-head">
-        {title && <span className="command-hl-title">{title}</span>}
+    <div className="command-block">
+      <div className="command-block-header">
+        <span className="command-block-title">{title || "Command"}</span>
         <CopyButton text={code} />
       </div>
-      <pre className="command-hl-pre">{code}</pre>
+      <pre className="command-block-pre">{code}</pre>
+    </div>
+  );
+}
+
+/**
+ * Collapsible command — header (chevron + title + Copy) always visible;
+ * click header to toggle body. Body hidden by default.
+ */
+export function CollapsibleCommand({
+  title,
+  code,
+  defaultOpen = false,
+}: {
+  title: string;
+  code: string;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+
+  return (
+    <div className="command-block">
+      <div className="command-block-header">
+        <button
+          type="button"
+          className="command-block-toggle"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+        >
+          <span className="command-block-chev">{open ? "▾" : "▸"}</span>
+          <span className="command-block-title">{title}</span>
+        </button>
+        <CopyButton text={code} />
+      </div>
+      {open && <pre className="command-block-pre">{code}</pre>}
     </div>
   );
 }

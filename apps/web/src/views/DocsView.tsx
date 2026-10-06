@@ -1,5 +1,5 @@
 import { IconBook, IconGear, IconInfo } from "../components/Icons";
-import { CommandBlock, CopyButton } from "../components/SelectMenu";
+import { CommandBlock, CollapsibleCommand, CopyButton } from "../components/SelectMenu";
 import { getApiBase } from "../lib/api";
 
 function Section({
@@ -224,6 +224,7 @@ cp apps/worker/.dev.vars.example apps/worker/.dev.vars
 
         <h3>2. Local run</h3>
         <CommandBlock
+          title="Start local dev"
           code={`pnpm worker:dev    # API :8787
 pnpm web:dev       # SPA :5173`}
         />
@@ -245,6 +246,7 @@ pnpm web:dev       # SPA :5173`}
           </li>
         </ul>
         <CommandBlock
+          title="Deploy worker + Pages"
           code={`cd apps/worker && wrangler secret put OPERATOR_PIN   # prod PIN
 cd ../.. && pnpm worker:deploy
 pnpm web:deploy
@@ -253,9 +255,9 @@ pnpm web:deploy
 
         <h3>4. Agent deploy prompt</h3>
         <p>Copy this into an agent that has the repo + wrangler access:</p>
-        <CopyButton
-          label="Copy agent prompt"
-          text={`Deploy QueueLess from github.com/zamdevio/queueless on a free Cloudflare account.
+        <CollapsibleCommand
+          title="Agent prompt"
+          code={`Deploy QueueLess from github.com/zamdevio/queueless on a free Cloudflare account.
 
 Steps:
 1. git clone https://github.com/zamdevio/queueless.git && cd queueless && pnpm install
