@@ -14,9 +14,11 @@ import {
   errRetryable,
   isUnauthorized,
   type Board,
+  type Ticket,
   type QueueEvent,
 } from "../lib/api";
 import { ErrorState } from "../components/ErrorState";
+import { Pagination } from "../components/Pagination";
 import { useAuth } from "../lib/auth";
 import { OperatorLogin } from "./OperatorLogin";
 import { toast } from "sonner";
@@ -95,11 +97,8 @@ export function OperatorView({ queueId }: { queueId: string }) {
   async function handleCallNext() {
     try {
       const called = await callNext(queueId);
-      if (called) {
-        toast.success(`Called ticket #${called.number}`);
-      } else {
-        toast.info("No one waiting to call.");
-      }
+      if (called) toast.success(`Called ticket #${called.number}`);
+      else toast.info("No one waiting to call.");
     } catch (err) {
       reportError(err);
     }
@@ -192,6 +191,7 @@ export function OperatorView({ queueId }: { queueId: string }) {
 
   const tickets = board?.tickets ?? [];
   const waitingTickets = tickets.filter((t) => t.state === "waiting");
+  const historyTickets = tickets.filter((t) => t.state !== "waiting");
   const nowServing = board?.nowServing ?? null;
   const maxWaiting = board?.settings?.maxWaiting ?? 50;
   const waitingCount = board?.waitingCount ?? waitingTickets.length;
@@ -233,7 +233,9 @@ export function OperatorView({ queueId }: { queueId: string }) {
       <div className="stats-grid">
         <div className="stat-card">
           <div className="stat-content">
-            <div className="stat-value">{stats?.avgServiceMs != null ? `${Math.round(stats.avgServiceMs / 1000)}s` : "—"}</div>
+            <div className="stat-value">
+              {stats?.avgServiceMs != null ? `${Math.round(stats.avgServiceMs / 1000)}s` : "—"}
+            </div>
             <div className="stat-label">Avg service</div>
           </div>
         </div>
@@ -251,7 +253,9 @@ export function OperatorView({ queueId }: { queueId: string }) {
         </div>
         <div className="stat-card">
           <div className="stat-content">
-            <div className="stat-value">{waitingCount}/{maxWaiting}</div>
+            <div className="stat-value">
+              {waitingCount}/{maxWaiting}
+            </div>
             <div className="stat-label">In line</div>
           </div>
         </div>
@@ -282,12 +286,6 @@ export function OperatorView({ queueId }: { queueId: string }) {
         </span>
       </form>
 
-      {nowServing !== null && (
-        <div className="now-serving">
-          Now serving: <strong>{nowServing}</strong>
-        </div>
-      )}
-
       <div className="export-row">
         <span className="export-label">Export history</span>
         <button type="button" className="btn-secondary" onClick={() => handleExport("csv")}>
@@ -301,52 +299,81 @@ export function OperatorView({ queueId }: { queueId: string }) {
         </button>
       </div>
 
+      {nowServing !== null && (
+        <div className="now-serving">
+          Now serving: <strong>{nowServing}</strong>
+        </div>
+      )}
+
       <div className="queue-list">
-        <h2>Waiting customers</h2>
-        <ul>
-          {waitingTickets.map((t) => (
-            <li key={t.id}>
-              <div className="ticket-row">
-                <span className="ticket-num">
-                  #{t.number}
-                  {t.name ? ` · ${t.name}` : ""}
-                </span>
-                <span className="ticket-meta">
-                  {[
-                    t.meta?.country,
-                    t.meta?.city,
-                    t.meta?.language,
-                    t.meta?.userAgent?.slice(0, 40),
-                  ]
-                    .filter(Boolean)
-                    .join(" · ") || "—"}
-                </span>
-              </div>
-              <div className="actions">
-                <button onClick={() => handleSkip(t.id)}>Skip</button>
-                <button onClick={() => handleRemove(t.id)}>Remove</button>
-              </div>
-            </li>
-          ))}
-          {waitingTickets.length === 0 && <li className="empty-row">No one waiting</li>}
-        </ul>
+        <div className="queue-list-header">
+          <h2>Waiting customers</h2>
+          <span className="queue-list-count">
+            {waitingCount}/{maxWaiting}
+          </span>
+        </div>
+        <Pagination
+          items={waitingTickets}
+          searchKeys={["name"]}
+          sortKey="number"
+          label="waiting tickets"
+        >
+          {(pageItems) => (
+            <ul>
+              {pageItems.map((t: Ticket) => (
+                <li key={t.id}>
+                  <div className="ticket-row">
+                    <span className="ticket-num">
+                      #{t.number}
+                      {t.name ? ` · ${t.name}` : ""}
+                    </span>
+                    <span className="ticket-meta">
+                      {[
+                        t.meta?.country,
+                        t.meta?.city,
+                        t.meta?.language,
+                        t.meta?.userAgent?.slice(0, 40),
+                      ]
+                        .filter(Boolean)
+                        .join(" · ") || "—"}
+                    </span>
+                  </div>
+                  <div className="actions">
+                    <button onClick={() => handleSkip(t.id)}>Skip</button>
+                    <button onClick={() => handleRemove(t.id)}>Remove</button>
+                  </div>
+                </li>
+              ))}
+              {waitingTickets.length === 0 && <li className="empty-row">No one waiting</li>}
+            </ul>
+          )}
+        </Pagination>
       </div>
 
       <div className="history">
-        <h2>History</h2>
-        <ul>
-          {tickets
-            .filter((t) => t.state !== "waiting")
-            .map((t) => (
-              <li key={t.id} className={t.state}>
-                #{t.number}
-                {t.name ? ` · ${t.name}` : ""} — {t.state}
-              </li>
-            ))}
-          {tickets.filter((t) => t.state !== "waiting").length === 0 && (
-            <li className="empty-row">No history yet</li>
+        <div className="queue-list-header">
+          <h2>History</h2>
+          <span className="queue-list-count">{historyTickets.length}</span>
+        </div>
+        <Pagination
+          items={historyTickets}
+          searchKeys={["name"]}
+          sortKey="number"
+          sortDir="desc"
+          label="history tickets"
+        >
+          {(pageItems) => (
+            <ul>
+              {pageItems.map((t) => (
+                <li key={t.id} className={t.state}>
+                  #{t.number}
+                  {t.name ? ` · ${t.name}` : ""} — {t.state}
+                </li>
+              ))}
+              {historyTickets.length === 0 && <li className="empty-row">No history yet</li>}
+            </ul>
           )}
-        </ul>
+        </Pagination>
       </div>
     </div>
   );

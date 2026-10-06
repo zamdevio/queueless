@@ -8,6 +8,7 @@ export interface TicketMeta {
   city?: string;
   language?: string;
   ipHash?: string;
+  deviceId?: string;
 }
 
 export interface Ticket {
@@ -158,13 +159,33 @@ export class QueueDO extends DurableObject {
       case "POST": {
         switch (action) {
           case "join": {
-            let body: { meta?: TicketMeta; name?: string } = {};
+            let body: { meta?: TicketMeta; name?: string; deviceId?: string } = {};
             try {
               body = await request.json();
             } catch {
               body = {};
             }
-            return this.handleJoin(body.meta, body.name);
+            const meta: TicketMeta = { ...body.meta, deviceId: body.deviceId || body.meta?.deviceId };
+            // Reject if this deviceId already has an active ticket
+            if (meta.deviceId) {
+              for (const t of this.tickets.values()) {
+                if (
+                  (t.state === "waiting" || t.state === "called") &&
+                  t.meta?.deviceId === meta.deviceId
+                ) {
+                  return new Response(
+                    JSON.stringify({
+                      error: "This device already has an active ticket in this queue.",
+                      code: "DEVICE_ALREADY_IN_QUEUE",
+                      ticketId: t.id,
+                      number: t.number,
+                    }),
+                    { status: 409 }
+                  );
+                }
+              }
+            }
+            return this.handleJoin(meta, body.name);
           }
           case "leave":
             return this.handleLeave(param || "");

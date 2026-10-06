@@ -62,6 +62,14 @@ function GuidePage() {
         </p>
       </Section>
 
+      <Section title="Tickets &amp; reload">
+        <p>
+          Each browser stores a private device id. If you join a queue and reload, your
+          ticket is restored. The same device cannot join the same queue twice while a
+          ticket is active.
+        </p>
+      </Section>
+
       <Section title="CORS — why the backend might not work from this site">
         <p>
           Browsers enforce a <strong>Cross-Origin Resource Sharing (CORS)</strong>{" "}
@@ -238,6 +246,7 @@ function DevelopmentPage() {
         <pre>{`pnpm install
 pnpm worker:dev    # API on :8787
 pnpm web:dev       # SPA on :5173
+pnpm test:policies # worker policy tests
 
 # apps/web/.env         → VITE_API_URL=http://localhost:8787
 # apps/worker/.dev.vars → OPERATOR_PIN=...`}</pre>

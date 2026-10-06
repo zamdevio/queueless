@@ -11,7 +11,8 @@ import { DurableObject } from "cloudflare:workers";
  */
 
 const WINDOW_MS = 60_000;
-const MAX_ATTEMPTS = 10;
+const MAX_LOGIN_ATTEMPTS = 10;
+const MAX_JOIN_ATTEMPTS = 5;
 
 export class RateLimitDO extends DurableObject {
   constructor(state: DurableObjectState, env: any) {
@@ -52,17 +53,18 @@ export class RateLimitDO extends DurableObject {
     const path = url.pathname.replace(/\/+$/, "") || "/";
     const now = Date.now();
     const storageKey = this.storageKey(ip, key);
+    const max = key && key.startsWith("join:") ? MAX_JOIN_ATTEMPTS : MAX_LOGIN_ATTEMPTS;
 
     if (request.method === "GET" && (path === "/check" || path.endsWith("/check"))) {
       const hits = this.prune(await this.readHits(storageKey), now);
-      const limited = hits.length >= MAX_ATTEMPTS;
+      const limited = hits.length >= max;
       const retryAfterSec = limited
         ? Math.max(Math.ceil((hits[0] + WINDOW_MS - now) / 1000), 1)
         : 0;
       return Response.json({
         limited,
         retryAfterSec,
-        remaining: Math.max(MAX_ATTEMPTS - hits.length, 0),
+        remaining: Math.max(max - hits.length, 0),
       });
     }
 

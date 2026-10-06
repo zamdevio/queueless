@@ -9,6 +9,7 @@ export type TicketMeta = {
   city?: string;
   language?: string;
   ipHash?: string;
+  deviceId?: string;
 };
 
 export type Ticket = {
@@ -203,12 +204,13 @@ export async function operatorMe(): Promise<boolean> {
 export async function joinQueue(
   queueId: string,
   meta?: TicketMeta,
-  name?: string
+  name?: string,
+  deviceId?: string
 ): Promise<JoinResult> {
   const res = await apiFetch(`/api/queue/${queueId}/join`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ meta, name }),
+    body: JSON.stringify({ meta, name, deviceId }),
   });
   return res.json();
 }
@@ -220,6 +222,19 @@ export async function leaveQueue(queueId: string, ticketId: string): Promise<voi
 export async function getBoard(queueId: string): Promise<Board> {
   const res = await apiFetch(`/api/queue/${queueId}`);
   return res.json();
+}
+
+/** Find this device's active ticket, if any. */
+export async function findMyTicket(
+  queueId: string,
+  deviceId: string
+): Promise<Ticket | null> {
+  const board = await getBoard(queueId);
+  return (
+    board.tickets.find(
+      (t) => t.meta?.deviceId === deviceId && (t.state === "waiting" || t.state === "called")
+    ) || null
+  );
 }
 
 /* ===== Queue (operator) ===== */
@@ -306,10 +321,18 @@ export function applyEvent(prev: Board | null, event: QueueEvent): Board | null 
   if (!prev) return prev;
   switch (event.event) {
     case "join":
-      return { ...prev, tickets: [...prev.tickets, event.data] };
+      return {
+        ...prev,
+        tickets: [...prev.tickets, event.data],
+        waitingCount: (prev.waitingCount ?? 0) + 1,
+        stats: prev.stats
+          ? { ...prev.stats, waiting: (prev.stats.waiting ?? 0) + 1 }
+          : prev.stats,
+      };
     case "leave":
       return {
         ...prev,
+        waitingCount: Math.max((prev.waitingCount ?? 1) - 1, 0),
         tickets: prev.tickets.map((t) =>
           t.id === event.data.ticketId ? { ...t, state: "left" as const } : t
         ),
@@ -319,6 +342,10 @@ export function applyEvent(prev: Board | null, event: QueueEvent): Board | null 
         ...prev,
         nowServing: event.data.nowServing ?? prev.nowServing,
         stats: event.data.stats ?? prev.stats,
+        waitingCount: Math.max(
+          (prev.waitingCount ?? 1) - 1,
+          event.data.stats?.waiting ?? (prev.waitingCount ?? 1) - 1
+        ),
         tickets: prev.tickets.map((t) =>
           t.id === event.data.ticketId
             ? { ...t, state: "called" as const, calledAt: event.data.calledAt ?? Date.now() }
@@ -328,6 +355,7 @@ export function applyEvent(prev: Board | null, event: QueueEvent): Board | null 
     case "skip":
       return {
         ...prev,
+        waitingCount: Math.max((prev.waitingCount ?? 1) - 1, 0),
         tickets: prev.tickets.map((t) =>
           t.id === event.data.ticketId ? { ...t, state: "skipped" as const } : t
         ),
@@ -335,6 +363,7 @@ export function applyEvent(prev: Board | null, event: QueueEvent): Board | null 
     case "remove":
       return {
         ...prev,
+        waitingCount: Math.max((prev.waitingCount ?? 1) - 1, 0),
         tickets: prev.tickets.map((t) =>
           t.id === event.data.ticketId ? { ...t, state: "removed" as const } : t
         ),
@@ -342,7 +371,16 @@ export function applyEvent(prev: Board | null, event: QueueEvent): Board | null 
     case "settings":
       return { ...prev, settings: event.data };
     case "reset":
-      return { tickets: [], nowServing: null, nextNumber: 1 };
+      return {
+        tickets: [],
+        nowServing: null,
+        nextNumber: 1,
+        waitingCount: 0,
+        settings: prev.settings,
+        stats: prev.stats
+          ? { ...prev.stats, waiting: 0, issued: 0, samples: 0, avgServiceMs: null, lastServiceMs: null }
+          : prev.stats,
+      };
     default:
       return prev;
   }

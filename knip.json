@@ -3,7 +3,7 @@
 	"ignoreExportsUsedInFile": true,
 	"ignoreDependencies": ["cloudflare"],
 	"ignoreBinaries": ["wrangler"],
-	"ignore": [],
+	"ignore": ["scripts/test-worker-policies.ts"],
 	"workspaces": {
 		"apps/web": {
 			"entry": ["src/**/*.{ts,tsx}", "public/sw.js"]

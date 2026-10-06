@@ -65,14 +65,19 @@ queue.post("/:queueId/join", async (c) => {
   };
 
   const body = await c.req.json().catch(() => ({}));
+  const deviceId =
+    typeof body?.deviceId === "string" && body.deviceId
+      ? body.deviceId.slice(0, 64)
+      : undefined;
 
   const res = await queueDO.fetch(
     new Request("https://queue/join", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        meta: { ...meta, ...(body?.meta || {}) },
+        meta: { ...meta, deviceId },
         name: body?.name,
+        deviceId,
       }),
     })
   );

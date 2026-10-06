@@ -1039,3 +1039,205 @@
   font-size: 13px;
   color: var(--color-text-muted);
 }
+
+/* ===== Pagination ===== */
+.pagination-toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+  padding: 0 4px;
+}
+
+.pagination-search {
+  flex: 1;
+  min-width: 140px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-tertiary);
+  color: var(--color-text);
+  font-size: 13px;
+}
+
+.pagination-perpage {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.pagination-inline-btn {
+  background: none;
+  border: 1px dashed var(--color-border);
+  color: var(--color-text-secondary);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.pagination-inline-btn:hover {
+  color: var(--color-text);
+  border-color: var(--color-border-hover);
+}
+
+.pagination-input {
+  width: 48px;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-primary);
+  background: var(--color-bg-tertiary);
+  color: var(--color-text);
+  font-size: 12px;
+  text-align: center;
+}
+
+.pagination-page-input {
+  width: 56px;
+}
+
+.pagination-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  padding: 0 4px 4px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.pagination-nav {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.pagination-nav button {
+  min-width: 32px;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-tertiary);
+  color: var(--color-text);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.pagination-nav button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pagination-nav button:not(:disabled):hover {
+  background: var(--color-border);
+}
+
+.pagination-page-btn {
+  min-width: 56px !important;
+}
+
+/* ===== Capacity / ticket card ===== */
+.capacity-pill {
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  padding: 6px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.ticket-card {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.ticket-card-main {
+  display: flex;
+  gap: 28px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.ticket-number-block {
+  min-width: 120px;
+}
+
+.ticket-label {
+  display: block;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  margin-bottom: 4px;
+}
+
+.ticket-big {
+  font-size: 64px;
+  font-weight: 800;
+  line-height: 1;
+  background: linear-gradient(135deg, var(--color-primary), #7c3aed);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.ticket-facts {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.ticket-fact {
+  min-width: 80px;
+}
+
+.ticket-fact-label {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  margin-bottom: 2px;
+}
+
+.ticket-fact-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.ticket-card-actions {
+  margin-top: 20px;
+}
+
+.queue-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px 8px;
+}
+
+.queue-list-header h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.queue-list-count {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+.history .queue-list-header {
+  border-bottom: 1px solid var(--color-border);
+}

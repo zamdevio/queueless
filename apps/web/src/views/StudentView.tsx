@@ -9,12 +9,15 @@ import {
   errMessage,
   errRetryable,
   formatEtaMs,
+  findMyTicket,
   type Ticket,
   type Board,
   type QueueEvent,
 } from "../lib/api";
+import { getDeviceId } from "../lib/device";
 import { ErrorState } from "../components/ErrorState";
 import { IconAlert } from "../components/Icons";
+import { Pagination } from "../components/Pagination";
 
 export function StudentView({ queueId }: { queueId: string }) {
   const [ticket, setTicket] = useState<Ticket | null>(null);
@@ -41,62 +44,84 @@ export function StudentView({ queueId }: { queueId: string }) {
     }
   }, [queueId]);
 
-  const join = useCallback(async () => {
-    setJoining(true);
-    setError(null);
-    try {
-      const meta = {
-        userAgent: navigator.userAgent.slice(0, 300),
-        language: navigator.language,
-      };
-      const newTicket = await joinQueue(queueId, meta, displayName || undefined);
-      setTicket(newTicket);
-      if (newTicket.duplicateFromSameIp) {
-        toast.warning(
-          `This network already has ticket #${newTicket.existingTicketId ? "in queue" : ""} — you can still join, but staff may see two tickets from the same place.`
-        );
-      } else {
-        toast.success(`Joined queue — ticket #${newTicket.number}`);
-      }
+  // Restore ticket for this device
+  useEffect(() => {
+    let disposed = false;
+    async function restore() {
       await loadBoard();
-    } catch (err) {
-      setError({
-        message: errMessage(err, "Failed to join."),
-        retryable: errRetryable(err),
-      });
-      toast.error(errMessage(err, "Failed to join."));
-    } finally {
-      setJoining(false);
+      if (disposed) return;
+      try {
+        const mine = await findMyTicket(queueId, getDeviceId());
+        if (mine && !disposed) setTicket(mine);
+      } catch {
+        // ignore
+      }
     }
-  }, [queueId, loadBoard, displayName]);
+    restore();
+    return () => {
+      disposed = true;
+    };
+  }, [queueId, loadBoard]);
 
+  // SSE — board updates automatically (capacity counts included)
   useEffect(() => {
     let disposed = false;
     let evtSource: EventSource | null = null;
 
-    async function init() {
-      await loadBoard();
-      if (disposed) return;
-      evtSource = subscribeToQueue(queueId, (event: QueueEvent) => {
-        setBoard((prev) => applyEvent(prev, event));
-        if (
-          event.event === "call" &&
-          ticket &&
-          event.data?.ticketId === ticket.id &&
-          !calledRef.current
-        ) {
-          calledRef.current = true;
-          setCalledOpen(true);
-        }
-      });
-    }
+    evtSource = subscribeToQueue(queueId, (event: QueueEvent) => {
+      setBoard((prev) => applyEvent(prev, event));
+      if (
+        event.event === "call" &&
+        ticket &&
+        event.data?.ticketId === ticket.id &&
+        !calledRef.current
+      ) {
+        calledRef.current = true;
+        setCalledOpen(true);
+      }
+    });
 
-    init();
     return () => {
       disposed = true;
       evtSource?.close();
     };
-  }, [queueId, loadBoard, ticket]);
+  }, [queueId, ticket]);
+
+  const join = useCallback(async () => {
+    setJoining(true);
+    setError(null);
+    try {
+      const deviceId = getDeviceId();
+      const meta = {
+        userAgent: navigator.userAgent.slice(0, 300),
+        language: navigator.language,
+        deviceId,
+      };
+      const newTicket = await joinQueue(queueId, meta, displayName || undefined, deviceId);
+      setTicket(newTicket);
+      if (newTicket.duplicateFromSameIp) {
+        toast.warning("This network already has a waiting ticket — staff may see two.");
+      } else {
+        toast.success(`Joined — ticket #${newTicket.number}`);
+      }
+      await loadBoard();
+    } catch (err) {
+      const msg = errMessage(err, "Failed to join.");
+      // device already in queue — restore existing
+      if (msg.toLowerCase().includes("already has an active ticket")) {
+        try {
+          const mine = await findMyTicket(queueId, getDeviceId());
+          if (mine) setTicket(mine);
+        } catch {
+          // ignore
+        }
+      }
+      setError({ message: msg, retryable: errRetryable(err) });
+      toast.error(msg);
+    } finally {
+      setJoining(false);
+    }
+  }, [queueId, loadBoard, displayName]);
 
   async function handleLeave() {
     if (!ticket) return;
@@ -113,11 +138,11 @@ export function StudentView({ queueId }: { queueId: string }) {
     }
   }
 
-  if (loading) {
+  if (loading && !ticket && !board) {
     return <div className="loading">Loading queue {queueId}…</div>;
   }
 
-  if (error && !ticket) {
+  if (error && !ticket && !board) {
     return (
       <ErrorState
         title="Could not load queue"
@@ -134,7 +159,6 @@ export function StudentView({ queueId }: { queueId: string }) {
   const maxWaiting = board?.settings?.maxWaiting ?? 50;
   const waitingCount = board?.waitingCount ?? waitingTickets.length;
   const stats = board?.stats;
-  const avgService = formatEtaMs(stats?.avgServiceMs ?? null);
 
   const position = ticket
     ? waitingTickets.findIndex((t) => t.id === ticket.id) + 1
@@ -147,7 +171,12 @@ export function StudentView({ queueId }: { queueId: string }) {
 
   return (
     <div className="student-view">
-      <h1>Queue · {queueId}</h1>
+      <div className="view-header">
+        <h1>Queue · {queueId}</h1>
+        <div className="capacity-pill" aria-live="polite">
+          {waitingCount}/{maxWaiting} waiting
+        </div>
+      </div>
 
       {error && (
         <ErrorState
@@ -161,11 +190,8 @@ export function StudentView({ queueId }: { queueId: string }) {
       {!ticket ? (
         <div className="join-panel">
           <p className="join-hint">
-            Join to get a ticket number. A display name is optional (shown to staff only).
+            Get a ticket number and watch your position. Display name is optional (staff only).
           </p>
-          <div className="queue-capacity">
-            {waitingCount}/{maxWaiting} waiting
-          </div>
           <form
             className="join-form"
             onSubmit={(e) => {
@@ -186,68 +212,91 @@ export function StudentView({ queueId }: { queueId: string }) {
               className="btn-primary"
               disabled={joining || waitingCount >= maxWaiting}
             >
-              {joining ? "Joining…" : waitingCount >= maxWaiting ? "Queue full" : "Join queue"}
+              {joining
+                ? "Joining…"
+                : waitingCount >= maxWaiting
+                  ? "Queue full"
+                  : "Join queue"}
             </button>
           </form>
         </div>
       ) : (
-        <>
-          <div className="ticket-info">
-            <p>Your number</p>
-            <strong>{ticket.number}</strong>
-            {ticket.state === "waiting" && position > 0 && (
-              <p>
-                Position in line: <strong>{position}</strong>
-              </p>
-            )}
-            {etaForMe && (
-              <p>
-                Estimated wait: <strong>{etaForMe}</strong>
-              </p>
-            )}
-            {nowServing !== null && (
-              <p>
-                Now serving: <strong>{nowServing}</strong>
-              </p>
-            )}
-            {ticket.state === "called" && (
-              <p className="ticket-called">It&apos;s your turn — head to the counter.</p>
-            )}
-            {ticket.state !== "waiting" && ticket.state !== "called" && (
-              <p className="ticket-closed">Ticket {ticket.state}</p>
-            )}
+        <div className="ticket-card">
+          <div className="ticket-card-main">
+            <div className="ticket-number-block">
+              <span className="ticket-label">Your number</span>
+              <span className="ticket-big">{ticket.number}</span>
+            </div>
+            <div className="ticket-facts">
+              {ticket.state === "waiting" && position > 0 && (
+                <div className="ticket-fact">
+                  <span className="ticket-fact-label">Position</span>
+                  <span className="ticket-fact-value">{position}</span>
+                </div>
+              )}
+              {etaForMe && (
+                <div className="ticket-fact">
+                  <span className="ticket-fact-label">Est. wait</span>
+                  <span className="ticket-fact-value">{etaForMe}</span>
+                </div>
+              )}
+              {nowServing !== null && (
+                <div className="ticket-fact">
+                  <span className="ticket-fact-label">Serving</span>
+                  <span className="ticket-fact-value">{nowServing}</span>
+                </div>
+              )}
+            </div>
           </div>
-
+          {ticket.state === "called" && (
+            <p className="ticket-called">It&apos;s your turn — head to the counter.</p>
+          )}
           {ticket.state === "waiting" && (
-            <div className="actions">
-              <button onClick={handleLeave}>Leave queue</button>
+            <div className="ticket-card-actions">
+              <button className="btn-secondary" onClick={handleLeave}>
+                Leave queue
+              </button>
             </div>
           )}
-        </>
+        </div>
       )}
 
       <div className="queue-list">
-        <h2>Waiting customers</h2>
-        <ul>
-          {waitingTickets.map((t) => (
-            <li key={t.id} className={ticket && t.id === ticket.id ? "self" : ""}>
-              <span>
-                #{t.number}
-                {t.name ? ` · ${t.name}` : ""}
-                {ticket && t.id === ticket.id ? " (you)" : ""}
-              </span>
-            </li>
-          ))}
-          {waitingTickets.length === 0 && <li className="empty-row">Queue is empty</li>}
-        </ul>
+        <div className="queue-list-header">
+          <h2>Waiting</h2>
+          <span className="queue-list-count">
+            {waitingCount}/{maxWaiting}
+          </span>
+        </div>
+        <Pagination
+          items={waitingTickets}
+          searchKeys={["name"]}
+          sortKey="number"
+          label="tickets"
+        >
+          {(pageItems) => (
+            <ul>
+              {pageItems.map((t) => (
+                <li key={t.id} className={ticket && t.id === ticket.id ? "self" : ""}>
+                  <span>
+                    #{t.number}
+                    {t.name ? ` · ${t.name}` : ""}
+                    {ticket && t.id === ticket.id ? " (you)" : ""}
+                  </span>
+                </li>
+              ))}
+              {waitingTickets.length === 0 && <li className="empty-row">Queue is empty</li>}
+            </ul>
+          )}
+        </Pagination>
       </div>
 
       {calledOpen && ticket && (
         <div className="dialog-backdrop" role="dialog" aria-modal="true">
           <div className="dialog-panel">
             <div className="dialog-icon">
-            <IconAlert size={40} />
-          </div>
+              <IconAlert size={40} />
+            </div>
             <h2>It&apos;s your turn</h2>
             <p>
               Ticket <strong>#{ticket.number}</strong> is now being served. Please head to
