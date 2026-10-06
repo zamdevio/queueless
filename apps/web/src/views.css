@@ -1404,3 +1404,201 @@
 .dialog-icon-success svg {
   color: var(--color-success);
 }
+
+/* ===== Operator grid (Claude-style) + student ended states + per-page select ===== */
+.ops-grid {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 960px) {
+  .ops-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ops-primary {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.ops-side {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+/* Hero: same dark card language as student join panel, with live serving number */
+.ops-hero {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 28px 24px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.ops-hero-main {
+  min-width: 140px;
+}
+
+.ops-hero-label {
+  display: block;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+  margin-bottom: 6px;
+}
+
+.ops-hero-number {
+  font-size: 72px;
+  font-weight: 800;
+  line-height: 1;
+  background: linear-gradient(135deg, var(--color-primary), #7c3aed);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.ops-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.ops-hero-btn {
+  min-width: 140px;
+  padding: 12px 20px;
+  font-size: 15px;
+}
+
+.ops-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.ops-panel {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.ops-panel .queue-list,
+.ops-panel.queue-list,
+.ops-panel.history {
+  border: none;
+  border-radius: 0;
+  margin-bottom: 0;
+}
+
+.ops-settings {
+  padding: 16px;
+}
+
+.ops-settings h2 {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 14px;
+  color: var(--color-text);
+}
+
+.ops-setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin-bottom: 12px;
+}
+
+.ops-setting-row input {
+  width: 88px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-tertiary);
+  color: var(--color-text);
+  font-size: 14px;
+}
+
+.ops-save {
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.ops-export-block {
+  border-top: 1px solid var(--color-border);
+  padding-top: 14px;
+}
+
+.ops-export-block .export-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  margin-bottom: 8px;
+}
+
+.ops-export-btns {
+  display: flex;
+  gap: 8px;
+}
+
+.ops-export-btns .btn-secondary {
+  flex: 1;
+}
+
+.view-subtitle {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+/* Student ended / skipped / removed */
+.ticket-ended {
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+}
+
+.ticket-ended-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: var(--color-text);
+}
+
+.ticket-ended-hint {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  margin-bottom: 12px;
+}
+
+/* Per-page select */
+.pagination-select {
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-tertiary);
+  color: var(--color-text);
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.pagination-select:hover {
+  border-color: var(--color-border-hover);
+}

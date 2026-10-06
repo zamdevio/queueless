@@ -13,6 +13,7 @@ interface PaginationProps<T extends PageItem> {
   children: (pageItems: T[]) => React.ReactNode;
 }
 
+const PER_PAGE_OPTIONS = [5, 10, 15, 20];
 const DEFAULT_PER_PAGE = 10;
 
 export function Pagination<T extends PageItem>({
@@ -27,8 +28,6 @@ export function Pagination<T extends PageItem>({
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(DEFAULT_PER_PAGE);
   const [query, setQuery] = useState("");
-  const [editingPerPage, setEditingPerPage] = useState(false);
-  const [perPageDraft, setPerPageDraft] = useState(String(DEFAULT_PER_PAGE));
   const [editingPage, setEditingPage] = useState(false);
   const [pageDraft, setPageDraft] = useState("1");
 
@@ -58,20 +57,6 @@ export function Pagination<T extends PageItem>({
   const start = (safePage - 1) * perPage;
   const pageItems = filtered.slice(start, start + perPage);
 
-  function commitPerPage(raw: string) {
-    const n = Number(raw);
-    if (!Number.isFinite(n) || n < 1 || n > 100) {
-      setPerPageDraft(String(perPage));
-      setEditingPerPage(false);
-      return;
-    }
-    const next = Math.floor(n);
-    setPerPage(next);
-    setPerPageDraft(String(next));
-    setEditingPerPage(false);
-    setPage(1);
-  }
-
   function commitPage(raw: string) {
     const n = Number(raw);
     if (!Number.isFinite(n) || n < 1) {
@@ -99,39 +84,25 @@ export function Pagination<T extends PageItem>({
           }}
           aria-label={`Search ${label}`}
         />
-        <div className="pagination-perpage">
+        <label className="pagination-perpage">
           <IconGear size={14} />
-          {editingPerPage ? (
-            <input
-              className="pagination-input"
-              autoFocus
-              inputMode="numeric"
-              value={perPageDraft}
-              onChange={(e) => setPerPageDraft(e.target.value)}
-              onBlur={() => commitPerPage(perPageDraft)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") commitPerPage(perPageDraft);
-                if (e.key === "Escape") {
-                  setPerPageDraft(String(perPage));
-                  setEditingPerPage(false);
-                }
-              }}
-              aria-label="Items per page"
-            />
-          ) : (
-            <button
-              type="button"
-              className="pagination-inline-btn"
-              onClick={() => {
-                setPerPageDraft(String(perPage));
-                setEditingPerPage(true);
-              }}
-              title="Edit items per page"
-            >
-              {perPage} per page
-            </button>
-          )}
-        </div>
+          <select
+            className="pagination-select"
+            value={perPage}
+            onChange={(e) => {
+              setPerPage(Number(e.target.value));
+              setPage(1);
+              setPageDraft("1");
+            }}
+            aria-label="Items per page"
+          >
+            {PER_PAGE_OPTIONS.map((n) => (
+              <option key={n} value={n}>
+                {n} per page
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
       {children(pageItems)}

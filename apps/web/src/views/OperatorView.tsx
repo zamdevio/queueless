@@ -114,8 +114,7 @@ export function OperatorView({ queueId }: { queueId: string }) {
     }
   }
 
-  async function handleSettings(e?: React.FormEvent) {
-    e?.preventDefault();
+  async function handleSettings() {
     const max = Number(maxInput);
     if (!Number.isFinite(max) || max < 0) {
       toast.error("Max waiting must be a number ≥ 0");
@@ -135,8 +134,6 @@ export function OperatorView({ queueId }: { queueId: string }) {
       reportError(err);
     }
   }
-
-  const handleSettingsBtn = () => handleSettings();
 
   async function handleExport(format: "csv" | "json" | "markdown") {
     try {
@@ -214,7 +211,10 @@ export function OperatorView({ queueId }: { queueId: string }) {
   return (
     <div className="operator-view">
       <div className="view-header">
-        <h1>Operator · {queueId}</h1>
+        <div>
+          <h1>Operator · {queueId}</h1>
+          <p className="view-subtitle">Live queue control</p>
+        </div>
         <div className="header-actions">
           <button
             type="button"
@@ -244,164 +244,181 @@ export function OperatorView({ queueId }: { queueId: string }) {
         />
       )}
 
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-content">
-            <div className="stat-value">
-              {stats?.avgServiceMs != null ? `${Math.round(stats.avgServiceMs / 1000)}s` : "—"}
+      <div className="ops-grid">
+        <div className="ops-primary">
+          <div className="ops-hero">
+            <div className="ops-hero-main">
+              <span className="ops-hero-label">Now serving</span>
+              <span className="ops-hero-number">{nowServing ?? "—"}</span>
             </div>
-            <div className="stat-label">Avg service</div>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-content">
-            <div className="stat-value">{stats?.samples ?? 0}</div>
-            <div className="stat-label">Samples</div>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-content">
-            <div className="stat-value">{stats?.issued ?? waitingCount}</div>
-            <div className="stat-label">Issued</div>
-          </div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-content">
-            <div className="stat-value">
-              {waitingCount}/{maxWaiting}
+            <div className="ops-hero-actions">
+              <button
+                className="btn-primary ops-hero-btn"
+                onClick={handleCallNext}
+                disabled={waitingTickets.length === 0}
+              >
+                Call next ({waitingCount})
+              </button>
+              <button
+                className="btn-secondary ops-hero-btn"
+                onClick={() => setConfirm({ kind: "reset" })}
+              >
+                Reset queue
+              </button>
             </div>
-            <div className="stat-label">In line</div>
           </div>
-        </div>
-      </div>
 
-      <div className="ops-toolbar">
-        <div className="ops-toolbar-main">
-          <button
-            className="btn-primary ops-call"
-            onClick={handleCallNext}
-            disabled={waitingTickets.length === 0}
-          >
-            Call next ({waitingCount})
-          </button>
-          <button className="btn-secondary" onClick={() => setConfirm({ kind: "reset" })}>
-            Reset
-          </button>
-        </div>
-        <div className="ops-toolbar-side">
-          <label className="ops-limit" htmlFor="maxWaiting">
-            Max waiting
-            <input
-              id="maxWaiting"
-              type="number"
-              min={0}
-              max={10000}
-              value={maxInput}
-              onChange={(e) => setMaxInput(e.target.value)}
-            />
-          </label>
-          <button type="button" className="btn-secondary" onClick={handleSettingsBtn}>
-            Save limit
-          </button>
-          <div className="ops-export">
-            <span className="export-label">Export</span>
-            <button type="button" className="btn-secondary" onClick={() => handleExport("csv")}>
-              CSV
-            </button>
-            <button type="button" className="btn-secondary" onClick={() => handleExport("json")}>
-              JSON
-            </button>
-            <button type="button" className="btn-secondary" onClick={() => handleExport("markdown")}>
-              MD
-            </button>
+          <div className="queue-list ops-panel">
+            <div className="queue-list-header">
+              <h2>Waiting customers</h2>
+              <span className="queue-list-count">
+                {waitingCount}/{maxWaiting}
+              </span>
+            </div>
+            <Pagination
+              items={waitingTickets}
+              searchKeys={["name"]}
+              sortKey="number"
+              label="waiting tickets"
+            >
+              {(pageItems) => (
+                <ul>
+                  {pageItems.map((t: Ticket) => (
+                    <li key={t.id}>
+                      <div className="ticket-row">
+                        <span className="ticket-num">
+                          #{t.number}
+                          {t.name ? ` · ${t.name}` : ""}
+                        </span>
+                        <span className="ticket-meta">
+                          {[
+                            t.meta?.country,
+                            t.meta?.city,
+                            t.meta?.language,
+                            t.meta?.userAgent?.slice(0, 40),
+                          ]
+                            .filter(Boolean)
+                            .join(" · ") || "—"}
+                        </span>
+                      </div>
+                      <div className="actions">
+                        <button
+                          onClick={() =>
+                            setConfirm({ kind: "skip", ticketId: t.id, number: t.number })
+                          }
+                        >
+                          Skip
+                        </button>
+                        <button
+                          onClick={() =>
+                            setConfirm({ kind: "remove", ticketId: t.id, number: t.number })
+                          }
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                  {waitingTickets.length === 0 && <li className="empty-row">No one waiting</li>}
+                </ul>
+              )}
+            </Pagination>
           </div>
-        </div>
-      </div>
 
-      {nowServing !== null && (
-        <div className="now-serving compact">
-          <span className="now-serving-label">Now serving</span>
-          <strong>{nowServing}</strong>
-        </div>
-      )}
-
-      <div className="queue-list">
-        <div className="queue-list-header">
-          <h2>Waiting customers</h2>
-          <span className="queue-list-count">
-            {waitingCount}/{maxWaiting}
-          </span>
-        </div>
-        <Pagination
-          items={waitingTickets}
-          searchKeys={["name"]}
-          sortKey="number"
-          label="waiting tickets"
-        >
-          {(pageItems) => (
-            <ul>
-              {pageItems.map((t: Ticket) => (
-                <li key={t.id}>
-                  <div className="ticket-row">
-                    <span className="ticket-num">
+          <div className="history ops-panel">
+            <div className="queue-list-header">
+              <h2>History</h2>
+              <span className="queue-list-count">{historyTickets.length}</span>
+            </div>
+            <Pagination
+              items={historyTickets}
+              searchKeys={["name"]}
+              sortKey="number"
+              sortDir="desc"
+              label="history tickets"
+            >
+              {(pageItems) => (
+                <ul>
+                  {pageItems.map((t) => (
+                    <li key={t.id} className={t.state}>
                       #{t.number}
-                      {t.name ? ` · ${t.name}` : ""}
-                    </span>
-                    <span className="ticket-meta">
-                      {[
-                        t.meta?.country,
-                        t.meta?.city,
-                        t.meta?.language,
-                        t.meta?.userAgent?.slice(0, 40),
-                      ]
-                        .filter(Boolean)
-                        .join(" · ") || "—"}
-                    </span>
-                  </div>
-                  <div className="actions">
-                    <button
-                      onClick={() => setConfirm({ kind: "skip", ticketId: t.id, number: t.number })}
-                    >
-                      Skip
-                    </button>
-                    <button
-                      onClick={() => setConfirm({ kind: "remove", ticketId: t.id, number: t.number })}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </li>
-              ))}
-              {waitingTickets.length === 0 && <li className="empty-row">No one waiting</li>}
-            </ul>
-          )}
-        </Pagination>
-      </div>
-
-      <div className="history">
-        <div className="queue-list-header">
-          <h2>History</h2>
-          <span className="queue-list-count">{historyTickets.length}</span>
+                      {t.name ? ` · ${t.name}` : ""} — {t.state}
+                    </li>
+                  ))}
+                  {historyTickets.length === 0 && <li className="empty-row">No history yet</li>}
+                </ul>
+              )}
+            </Pagination>
+          </div>
         </div>
-        <Pagination
-          items={historyTickets}
-          searchKeys={["name"]}
-          sortKey="number"
-          sortDir="desc"
-          label="history tickets"
-        >
-          {(pageItems) => (
-            <ul>
-              {pageItems.map((t) => (
-                <li key={t.id} className={t.state}>
-                  #{t.number}
-                  {t.name ? ` · ${t.name}` : ""} — {t.state}
-                </li>
-              ))}
-              {historyTickets.length === 0 && <li className="empty-row">No history yet</li>}
-            </ul>
-          )}
-        </Pagination>
+
+        <aside className="ops-side">
+          <div className="ops-stats">
+            <div className="stat-card">
+              <div className="stat-content">
+                <div className="stat-value">
+                  {stats?.avgServiceMs != null
+                    ? `${Math.round(stats.avgServiceMs / 1000)}s`
+                    : "—"}
+                </div>
+                <div className="stat-label">Avg service</div>
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-content">
+                <div className="stat-value">{stats?.samples ?? 0}</div>
+                <div className="stat-label">Samples</div>
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-content">
+                <div className="stat-value">{stats?.issued ?? waitingCount}</div>
+                <div className="stat-label">Issued</div>
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-content">
+                <div className="stat-value">
+                  {waitingCount}/{maxWaiting}
+                </div>
+                <div className="stat-label">In line</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="ops-settings ops-panel">
+            <h2>Queue settings</h2>
+            <label className="ops-setting-row" htmlFor="maxWaiting">
+              Max waiting
+              <input
+                id="maxWaiting"
+                type="number"
+                min={0}
+                max={10000}
+                value={maxInput}
+                onChange={(e) => setMaxInput(e.target.value)}
+              />
+            </label>
+            <button type="button" className="btn-primary ops-save" onClick={handleSettings}>
+              Save limit
+            </button>
+
+            <div className="ops-export-block">
+              <span className="export-label">Export</span>
+              <div className="ops-export-btns">
+                <button type="button" className="btn-secondary" onClick={() => handleExport("csv")}>
+                  CSV
+                </button>
+                <button type="button" className="btn-secondary" onClick={() => handleExport("json")}>
+                  JSON
+                </button>
+                <button type="button" className="btn-secondary" onClick={() => handleExport("markdown")}>
+                  MD
+                </button>
+              </div>
+            </div>
+          </div>
+        </aside>
       </div>
 
       <ConfirmDialog
@@ -409,7 +426,11 @@ export function OperatorView({ queueId }: { queueId: string }) {
         title={confirmTitle}
         message={confirmMsg}
         confirmLabel={
-          confirm?.kind === "reset" ? "Reset queue" : confirm?.kind === "skip" ? "Skip ticket" : "Remove ticket"
+          confirm?.kind === "reset"
+            ? "Reset queue"
+            : confirm?.kind === "skip"
+              ? "Skip ticket"
+              : "Remove ticket"
         }
         onConfirm={runConfirmed}
         onCancel={() => setConfirm(null)}

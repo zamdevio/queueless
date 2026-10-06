@@ -305,6 +305,36 @@ export function StudentView({ queueId }: { queueId: string }) {
               </button>
             </div>
           )}
+          {ticket.state === "skipped" && (
+            <div className="ticket-ended">
+              <p className="ticket-ended-title">Ticket #{ticket.number} was skipped</p>
+              <p className="ticket-ended-hint">
+                Staff skipped this number — you can join the queue again.
+              </p>
+              <button className="btn-primary" onClick={join}>
+                Join queue again
+              </button>
+            </div>
+          )}
+          {ticket.state === "removed" && (
+            <div className="ticket-ended">
+              <p className="ticket-ended-title">Ticket #{ticket.number} was removed</p>
+              <p className="ticket-ended-hint">
+                Staff removed this number from the queue — you can join again.
+              </p>
+              <button className="btn-primary" onClick={join}>
+                Join queue again
+              </button>
+            </div>
+          )}
+          {ticket.state === "left" && (
+            <div className="ticket-ended">
+              <p className="ticket-ended-title">Ticket #{ticket.number} — left the queue</p>
+              <button className="btn-primary" onClick={join}>
+                Join queue again
+              </button>
+            </div>
+          )}
         </div>
       )}
 
