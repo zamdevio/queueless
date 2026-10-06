@@ -10,16 +10,17 @@
 
 | Priority | Vertical | Notes |
 |----------|----------|-------|
-| 1 | Operator demo mode | Full layout preview without PIN; backend actions toast “disabled” |
-| 2 | Docs refresh | README / product / maintainer — drop stale D1/83% claims |
-| 3 | Course pack | Next after this slice — see [`course-management-pack.md`](./course-management-pack.md) |
+| 1 | Add-ons phase | [`add-ons.md`](./add-ons.md) — privacy lists, history richness, board toggle |
+| 2 | Course pack | Management Pack still the course deliverable |
+| 3 | Deploy polish | Worker `/` hides ALLOWED_ORIGINS; ENV=production; LICENSE + GH metadata |
 
 ## Queued — do not start
 
 | # | Item | Why parked |
 |---|------|------------|
-| 1 | Course Management Pack fill | After demo mode + docs refresh |
-| 2 | Full RBAC / accounts | Skipped for course MVP |
+| 1 | Add-ons slice A/B | Wait for user go |
+| 2 | Course Management Pack fill | After add-ons or in parallel if user wants |
+| 3 | Full RBAC / accounts | Skipped for course MVP |
 
 ## Shipped this round
 
