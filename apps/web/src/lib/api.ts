@@ -27,20 +27,34 @@ export type Board = {
   waitingCount?: number;
 };
 
-const API_BASE = import.meta.env.VITE_API_URL || "https://queueless.zamdevio.workers.dev";
+/**
+ * Single source of truth for the API base URL.
+ * Local dev default: wrangler dev on :8787.
+ * Set VITE_API_URL in apps/web/.env or .env.production (see .env.example).
+ */
+const API_BASE = (import.meta.env.VITE_API_URL || "http://localhost:8787").replace(/\/+$/, "");
 const TOKEN_KEY = "queueless_operator_token";
+
+export function getApiBase(): string {
+  return API_BASE;
+}
 
 export class ApiError extends Error {
   status?: number;
   network?: boolean;
+  cors?: boolean;
   retryable: boolean;
   unauthorized?: boolean;
 
-  constructor(message: string, opts?: { status?: number; network?: boolean; unauthorized?: boolean }) {
+  constructor(
+    message: string,
+    opts?: { status?: number; network?: boolean; cors?: boolean; unauthorized?: boolean }
+  ) {
     super(message);
     this.name = "ApiError";
     this.status = opts?.status;
     this.network = opts?.network;
+    this.cors = opts?.cors;
     this.unauthorized = opts?.unauthorized;
     this.retryable = opts?.network || !opts?.status || opts.status >= 500;
   }
@@ -70,6 +84,15 @@ export function clearOperatorToken(): void {
   }
 }
 
+function networkMessage(): string {
+  const base = API_BASE;
+  const isRemote = /^https?:\/\//.test(base) && !base.includes("localhost") && !base.includes("127.0.0.1");
+  if (isRemote) {
+    return `Cannot reach the QueueLess API at ${base}. If this site runs on another origin, the Worker CORS allow-list may not include this domain yet — see Docs → Guide → CORS.`;
+  }
+  return `Cannot reach the QueueLess API at ${base}. Start the worker locally with \`pnpm worker:dev\`, or set VITE_API_URL to your deployed Worker (see Docs → Development).`;
+}
+
 async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
   const token = getOperatorToken();
   const headers = new Headers(init?.headers);
@@ -85,10 +108,8 @@ async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
       headers,
     });
   } catch {
-    throw new ApiError(
-      "Network error — could not reach the QueueLess API. Check your connection.",
-      { network: true }
-    );
+    // Browser CORS failures and offline both surface as TypeError / Failed to fetch
+    throw new ApiError(networkMessage(), { network: true, cors: true });
   }
 
   if (res.status === 401) {
@@ -200,10 +221,7 @@ export async function resetQueue(queueId: string): Promise<void> {
   await apiFetch(`/api/queue/${queueId}/reset`, { method: "POST" });
 }
 
-export async function updateQueueSettings(
-  queueId: string,
-  maxWaiting: number
-): Promise<void> {
+export async function updateQueueSettings(queueId: string, maxWaiting: number): Promise<void> {
   await apiFetch(`/api/queue/${queueId}/settings`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -214,7 +232,8 @@ export async function updateQueueSettings(
 export function subscribeToQueue(
   queueId: string,
   onEvent: (event: QueueEvent) => void,
-  onOpen?: () => void
+  onOpen?: () => void,
+  onError?: () => void
 ): EventSource {
   const evtSource = new EventSource(`${API_BASE}/api/queue/${queueId}/stream`);
   evtSource.onopen = () => onOpen?.();
@@ -225,6 +244,7 @@ export function subscribeToQueue(
       console.error("Failed to parse SSE event", e.data);
     }
   };
+  evtSource.onerror = () => onError?.();
   return evtSource;
 }
 
@@ -286,4 +306,8 @@ export function errRetryable(err: unknown): boolean {
 
 export function isUnauthorized(err: unknown): boolean {
   return err instanceof ApiError && err.unauthorized === true;
+}
+
+export function isCorsOrNetwork(err: unknown): boolean {
+  return err instanceof ApiError && err.cors === true;
 }

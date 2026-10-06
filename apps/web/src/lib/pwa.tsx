@@ -8,21 +8,35 @@ type BeforeInstallPromptEvent = Event & {
 interface PwaContextType {
   canInstall: boolean;
   isInstalled: boolean;
+  /** True when installed but running in a browser tab (not standalone). */
+  canOpenApp: boolean;
   install: () => Promise<void>;
+  openApp: () => void;
 }
 
 const PwaContext = createContext<PwaContextType | undefined>(undefined);
 
-function detectInstalled(): boolean {
+function isStandalone(): boolean {
   if (typeof window === "undefined") return false;
   const ios = (window.navigator as any).standalone === true;
   const chromium = window.matchMedia("(display-mode: standalone)").matches;
-  return ios || chromium;
+  const edge = (window.navigator as any).msLaunchUri !== undefined && ios;
+  return ios || chromium || edge;
+}
+
+/** Installed marker: standalone OR previously confirmed install prompt. */
+function readInstalledFlag(): boolean {
+  try {
+    return localStorage.getItem("queueless_pwa_installed") === "1";
+  } catch {
+    return false;
+  }
 }
 
 export function PwaProvider({ children }: { children: ReactNode }) {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [isInstalled, setIsInstalled] = useState(detectInstalled);
+  const [installedFlag, setInstalledFlag] = useState(readInstalledFlag);
+  const [standalone, setStandalone] = useState(isStandalone);
 
   useEffect(() => {
     const onPrompt = (e: Event) => {
@@ -30,16 +44,33 @@ export function PwaProvider({ children }: { children: ReactNode }) {
       setDeferredPrompt(e as BeforeInstallPromptEvent);
     };
     const onInstalled = () => {
-      setIsInstalled(true);
+      setStandalone(true);
       setDeferredPrompt(null);
+      try {
+        localStorage.setItem("queueless_pwa_installed", "1");
+      } catch {
+        // ignore
+      }
+      setInstalledFlag(true);
     };
     window.addEventListener("beforeinstallprompt", onPrompt);
     window.addEventListener("appinstalled", onInstalled);
+
+    const mq = window.matchMedia("(display-mode: standalone)");
+    const onMq = () => setStandalone(mq.matches);
+    mq.addEventListener("change", onMq);
+
     return () => {
       window.removeEventListener("beforeinstallprompt", onPrompt);
       window.removeEventListener("appinstalled", onInstalled);
+      mq.removeEventListener("change", onMq);
     };
   }, []);
+
+  const isInstalled = standalone || installedFlag;
+  const canInstall = Boolean(deferredPrompt) && !isInstalled;
+  /** Installed but user is in a browser tab → offer Open PWA */
+  const canOpenApp = isInstalled && !standalone;
 
   const install = useCallback(async () => {
     if (!deferredPrompt) return;
@@ -52,13 +83,28 @@ export function PwaProvider({ children }: { children: ReactNode }) {
     setDeferredPrompt(null);
   }, [deferredPrompt]);
 
-  const canInstall = Boolean(deferredPrompt) && !isInstalled;
+  const openApp = useCallback(() => {
+    // Best-effort: browsers typically relaunch the installed PWA when
+    // the page is already installed; location reload in standalone.
+    if (standalone) {
+      window.location.reload();
+      return;
+    }
+    // No universal "launch PWA" API; reload + prompt user to use installed app icon.
+    toastOpenHint();
+    window.location.reload();
+  }, [standalone]);
 
   return (
-    <PwaContext.Provider value={{ canInstall, isInstalled, install }}>
+    <PwaContext.Provider value={{ canInstall, isInstalled, canOpenApp, install, openApp }}>
       {children}
     </PwaContext.Provider>
   );
+}
+
+function toastOpenHint() {
+  // lightweight console hint; UI shows Open button in sidebar
+  console.info("QueueLess: open the installed app from your home screen / taskbar.");
 }
 
 export function usePwa() {

@@ -2,30 +2,22 @@
 
 **Status:** live via `QueueDO` per `queueId`.
 
-## Responsibility
-
-Ticket identity, ordering, now-serving, join/leave, operator actions, capacity, client meta, SSE fan-out.
-
 ## Model
 
-- **Ticket:** `id`, `number`, `state`, `createdAt`, `meta`
+- **Ticket:** `id`, `number`, `state`, `createdAt`, `meta` (UA, country, city, language, ipHash)
 - **States:** waiting → called → served | skipped | left | removed
-- **Settings:** `maxWaiting` (default 50) — operator-editable via `POST /api/queue/:id/settings`
-- **Coordination:** Durable Object per `queueId`; HTTP mutations + SSE board
+- **Settings:** `maxWaiting` (default 50) — operator-editable
+- **Coordination:** Durable Object per `queueId`; HTTP mutations + SSE
 - **Default queue:** `main`
-
-## Capacity
-
-Join returns **409** `QUEUE_FULL` when `waiting >= maxWaiting`.
 
 ## Meta / privacy
 
-On join, worker captures CF headers + hashed IP. Never store raw IP. Customer identity = ticket + number only.
+CF headers + **hashed** IP only. Customers stay anonymous tickets.
 
-## Concurrency
+## Capacity
 
-Mutations serialize inside the DO. SSE snapshot + event fan-out to subscribers.
+Join returns **409** when `waiting >= maxWaiting`.
 
-## Out
+## Env
 
-Multi-counter, billing, customer accounts.
+No hardcoded queue hosts. SPA uses `VITE_API_URL`; worker CORS uses `ALLOWED_ORIGINS` from `wrangler.jsonc`.

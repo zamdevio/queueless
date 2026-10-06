@@ -1,0 +1,6 @@
+# Local secrets — copy to .dev.vars and fill (do not commit .dev.vars)
+# Production: wrangler secret put OPERATOR_PIN   (from apps/worker)
+
+OPERATOR_PIN=
+# Optional HMAC key (falls back to PIN-derived key if unset)
+# SESSION_SECRET=

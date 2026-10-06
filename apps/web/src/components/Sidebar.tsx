@@ -1,6 +1,23 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTheme } from "../lib/theme";
 import { usePwa } from "../lib/pwa";
+import {
+  IconHome,
+  IconUser,
+  IconBriefcase,
+  IconBook,
+  IconGear,
+  IconInfo,
+  IconDownload,
+  IconCheck,
+  IconExternal,
+  IconSun,
+  IconMoon,
+  IconPanelLeftClose,
+  IconPanelLeftOpen,
+  IconMenu,
+  IconX,
+} from "./Icons";
 
 type NavView = "landing" | "student" | "operator" | "docs";
 type DocsPage = "guide" | "development" | "about";
@@ -28,6 +45,12 @@ function readCollapsed(): boolean {
   }
 }
 
+const DOCS: { page: DocsPage; label: string; Icon: typeof IconBook }[] = [
+  { page: "guide", label: "Guide", Icon: IconBook },
+  { page: "development", label: "Development", Icon: IconGear },
+  { page: "about", label: "About", Icon: IconInfo },
+];
+
 export function Sidebar({
   currentView,
   docsPage,
@@ -36,7 +59,7 @@ export function Sidebar({
   onCollapsedChange,
 }: SidebarProps) {
   const { theme, toggleTheme } = useTheme();
-  const { canInstall, isInstalled, install } = usePwa();
+  const { canInstall, isInstalled, canOpenApp, install, openApp } = usePwa();
   const [collapsed, setCollapsed] = useState(readCollapsed);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -96,6 +119,47 @@ export function Sidebar({
     setMobileOpen(false);
   };
 
+  const addonButtons = (
+    <>
+      {isInstalled && !canOpenApp && (
+        <div
+          className={`nav-item nav-item-installed ${iconsOnly ? "nav-item-compact" : ""}`}
+          title="App installed"
+        >
+          <IconCheck size={16} />
+          {!iconsOnly && <span className="nav-label">Installed</span>}
+        </div>
+      )}
+      {canOpenApp && (
+        <button
+          type="button"
+          className={`nav-item ${iconsOnly ? "nav-item-compact" : ""}`}
+          onClick={openApp}
+          title="Open the installed app"
+        >
+          <IconExternal size={16} />
+          {!iconsOnly && <span className="nav-label">Open app</span>}
+        </button>
+      )}
+      {!isInstalled && (
+        <button
+          type="button"
+          className={`nav-item ${iconsOnly ? "nav-item-compact" : ""}`}
+          onClick={() => install()}
+          title={canInstall ? "Install app" : "Install not offered by this browser"}
+          disabled={!canInstall}
+        >
+          <IconDownload size={16} />
+          {!iconsOnly && (
+            <span className="nav-label">
+              {canInstall ? "Install app" : "Install unavailable"}
+            </span>
+          )}
+        </button>
+      )}
+    </>
+  );
+
   const panel = (
     <div className="sidebar-panel">
       <div className={`sidebar-header ${iconsOnly ? "sidebar-header-compact" : ""}`}>
@@ -118,7 +182,7 @@ export function Sidebar({
           onClick={() => go("landing")}
           title="Home"
         >
-          <span className="nav-icon">🏠</span>
+          <IconHome size={16} />
           {!iconsOnly && <span className="nav-label">Home</span>}
         </button>
 
@@ -133,7 +197,7 @@ export function Sidebar({
           onClick={() => go("student")}
           title="Customer view"
         >
-          <span className="nav-icon">👤</span>
+          <IconUser size={16} />
           {!iconsOnly && <span className="nav-label">Customer</span>}
         </button>
 
@@ -144,7 +208,7 @@ export function Sidebar({
           onClick={() => go("operator")}
           title="Operator dashboard"
         >
-          <span className="nav-icon">‍💼</span>
+          <IconBriefcase size={16} />
           {!iconsOnly && <span className="nav-label">Operator</span>}
         </button>
 
@@ -152,52 +216,24 @@ export function Sidebar({
           {iconsOnly ? "D" : "Docs"}
         </div>
 
-        {(["guide", "development", "about"] as DocsPage[]).map((page) => (
+        {DOCS.map(({ page, label, Icon }) => (
           <button
             key={page}
             className={`nav-item ${
               currentView === "docs" && docsPage === page ? "active" : ""
             } ${iconsOnly ? "nav-item-compact" : ""}`}
             onClick={() => go("docs", page)}
-            title={page.charAt(0).toUpperCase() + page.slice(1)}
+            title={label}
           >
-            <span className="nav-icon">
-              {page === "guide" ? "📘" : page === "development" ? "⚙️" : "ℹ️"}
-            </span>
-            {!iconsOnly && (
-              <span className="nav-label">{page.charAt(0).toUpperCase() + page.slice(1)}</span>
-            )}
+            <Icon size={16} />
+            {!iconsOnly && <span className="nav-label">{label}</span>}
           </button>
         ))}
 
         <div className={`nav-divider ${iconsOnly ? "nav-divider-compact" : ""}`}>
           {iconsOnly ? "A" : "Add-ons"}
         </div>
-
-        {isInstalled ? (
-          <button
-            className={`nav-item nav-item-installed ${iconsOnly ? "nav-item-compact" : ""}`}
-            title="App already installed"
-            disabled
-          >
-            <span className="nav-icon">✅</span>
-            {!iconsOnly && <span className="nav-label">Installed</span>}
-          </button>
-        ) : (
-          <button
-            className={`nav-item ${iconsOnly ? "nav-item-compact" : ""}`}
-            onClick={() => install()}
-            title={canInstall ? "Install app" : "Install not offered by this browser"}
-            disabled={!canInstall}
-          >
-            <span className="nav-icon">📥</span>
-            {!iconsOnly && (
-              <span className="nav-label">
-                {canInstall ? "Install app" : "Install unavailable"}
-              </span>
-            )}
-          </button>
-        )}
+        {addonButtons}
       </nav>
 
       <div className={`sidebar-footer ${iconsOnly ? "sidebar-footer-compact" : ""}`}>
@@ -219,16 +255,7 @@ export function Sidebar({
             title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
             aria-label="Toggle theme"
           >
-            {theme === "dark" ? (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <circle cx="12" cy="12" r="4" />
-                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
-              </svg>
-            ) : (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-              </svg>
-            )}
+            {theme === "dark" ? <IconSun size={16} /> : <IconMoon size={16} />}
             {!iconsOnly && <span>Theme</span>}
           </button>
 
@@ -239,15 +266,7 @@ export function Sidebar({
             title={collapsed ? "Expand sidebar (Ctrl+B)" : "Collapse sidebar (Ctrl+B)"}
             aria-label="Toggle sidebar"
           >
-            {collapsed ? (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M9 18l6-6-6-6" />
-              </svg>
-            ) : (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M15 18l-6-6 6-6" />
-              </svg>
-            )}
+            {collapsed ? <IconPanelLeftOpen size={16} /> : <IconPanelLeftClose size={16} />}
             {!iconsOnly && (
               <>
                 <span>Collapse</span>
@@ -270,7 +289,7 @@ export function Sidebar({
           aria-expanded={mobileOpen}
           aria-label={mobileOpen ? "Close menu" : "Open menu"}
         >
-          {mobileOpen ? "✕" : "☰"}
+          {mobileOpen ? <IconX size={18} /> : <IconMenu size={18} />}
         </button>
         <button type="button" className="logo logo-mobile" onClick={() => go("landing")}>
           <span className="logo-icon">Q</span>

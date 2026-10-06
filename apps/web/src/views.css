@@ -826,3 +826,72 @@
 .docs-view section {
   margin-bottom: 8px;
 }
+
+/* ===== Docs pages ===== */
+.docs-hero {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  color: var(--color-text);
+}
+
+.docs-hero h1 {
+  margin: 0;
+  font-size: 28px;
+}
+
+.docs-view svg {
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.docs-section {
+  margin-bottom: 8px;
+  padding-top: 4px;
+}
+
+.docs-section h2 {
+  font-size: 17px;
+  margin: 18px 0 8px;
+  color: var(--color-text);
+}
+
+.docs-section p,
+.docs-section li {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+
+.docs-section ul,
+.docs-section ol {
+  padding-left: 20px;
+}
+
+.docs-section li {
+  margin-bottom: 6px;
+}
+
+.docs-section a {
+  color: var(--color-primary);
+}
+
+.docs-api-base {
+  background: var(--color-bg-tertiary);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: ui-monospace, monospace;
+  font-size: 13px;
+}
+
+.feature-icon svg {
+  width: 28px;
+  height: 28px;
+  color: var(--color-primary);
+}
+
+.nav-item-installed svg,
+.nav-item-installed {
+  color: var(--color-success) !important;
+}

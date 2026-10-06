@@ -3,8 +3,7 @@
 **Rule:** Focus now = **max 3**. Everything else stays queued until a Focus slot frees.
 
 **Shipped receipts:** [`../shipped/README.md`](../shipped/README.md)  
-**Phase:** [`production-ready.md`](./production-ready.md)  
-**Architecture:** [`../../docs/architecture/overview.md`](../../docs/architecture/overview.md)
+**Next phase:** [`course-management-pack.md`](./course-management-pack.md)
 
 ---
 
@@ -12,25 +11,29 @@
 
 | Priority | Vertical | Notes |
 |----------|----------|-------|
-| 1 | Production-ready | PIN auth, capacity, meta, sonner, call dialog, docs, drop demo labels |
-| 2 | Docs + README | How to use / how it works / deploy from repo |
-| 3 | Deploy + secret | `OPERATOR_PIN` + worker/pages deploy |
+| 1 | Cleanup + env | Unused code removed; VITE_API_URL + ALLOWED_ORIGINS config |
+| 2 | Docs (in-app) | Guide CORS · Development deploy (GH `zamdevio/queueless`) · Phases section |
+| 3 | Course pack (next) | Management Pack after user confirms format |
 
 ## Queued — do not start
 
 | # | Item | Why parked |
 |---|------|------------|
-| 1 | D1 ticket history | DO holds live state |
-| 2 | Rolling ETA | Needs serve timestamps |
-| 3 | Full RBAC / accounts | PIN is enough for v1 |
-| 4 | Multi-counter | Stretch |
+| 1 | Course Management Pack fill | Wait for user go |
+| 2 | D1 ticket history | DO holds live state |
+| 3 | Rolling ETA | Needs serve timestamps |
+| 4 | Full RBAC | PIN is enough for v1 |
 
 ## Deployed
 
 - Worker: `https://queueless.zamdevio.workers.dev`
 - Pages: `https://thequeueless.pages.dev`
+- GH (planned public): `https://github.com/zamdevio/queueless`
 
-## Do not
+## Config (no hardcoded hosts)
 
-- Collect customer PII by default (meta is anonymous/hashed)
-- Leave operator routes unauthenticated once PIN ships
+| App | File | Vars |
+|-----|------|------|
+| Web | `apps/web/.env` / `.env.production` | `VITE_API_URL` (local default `http://localhost:8787`) |
+| Worker | `apps/worker/wrangler.jsonc` | `ALLOWED_ORIGINS`, `ENVIRONMENT` |
+| Worker secrets | `apps/worker/.dev.vars` or `wrangler secret put` | `OPERATOR_PIN`, optional `SESSION_SECRET` |

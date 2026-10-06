@@ -3,18 +3,16 @@
 Surface: `apps/web` (`@queueless/web`).
 
 - React + Vite SPA; default queue **`main`**
-- Views: landing · customer · operator (PIN) · docs (guide/development/about)
-- Realtime: SSE + sonner toasts; **call dialog** when ticket is called
-- Theme: `[data-theme]` dark/light; PWA via manifest + SW
-- API base: `VITE_API_URL` or `https://queueless.zamdevio.workers.dev`
+- API base: **`VITE_API_URL`** from env (default `http://localhost:8787` for local wrangler)
+- Icons: inline SVG components (`src/components/Icons.tsx`)
+- PWA: Install / Installed / **Open app** (when installed but running in a browser tab)
+- In-app docs: Guide (incl. CORS) · Development (deploy + phases) · About
 
-## Routes
+## Env
 
-| Path | View |
-|------|------|
-| `/` | Landing |
-| `/student/:queueId` | Customer |
-| `/operator/:queueId` | Operator |
-| `/docs/guide` \| `development` \| `about` | In-app docs |
+```bash
+# apps/web/.env or .env.production
+VITE_API_URL=https://queueless.zamdevio.workers.dev
+```
 
-Sidebar: Queue links · Docs · Add-ons (Install / Installed).
+No hardcoded worker hosts in `src/lib/api.ts`.

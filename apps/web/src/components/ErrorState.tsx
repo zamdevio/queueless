@@ -1,3 +1,5 @@
+import { IconAlert } from "../components/Icons";
+
 interface ErrorStateProps {
   title?: string;
   message: string;
@@ -13,7 +15,9 @@ export function ErrorState({
 }: ErrorStateProps) {
   return (
     <div className="error-panel" role="alert">
-      <div className="error-icon">⚠️</div>
+      <div className="error-icon">
+        <IconAlert size={22} />
+      </div>
       <div className="error-content">
         <h2 className="error-title">{title}</h2>
         <p className="error-message">{message}</p>

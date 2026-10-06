@@ -3,33 +3,18 @@
 Surface: `apps/worker` (`@queueless/worker`).
 
 - **Runtime:** Cloudflare Workers + **Hono**
-- **Queue:** `QueueDO` per `queueId` (join/call/skip/remove/reset/settings + SSE)
-- **Auth:** `POST /api/auth/login` PIN → cookie `ql_op_session`; operator mutations require session
-- **CORS:** `localhost:5173` + `*.thequeueless.pages.dev`
-- **D1:** binding `DB` (queue state in DO; D1 available for later history)
+- **Queue:** `QueueDO` per `queueId`
+- **Auth:** PIN login (10 rpm) → Bearer token + `SameSite=None` cookie
+- **CORS:** `ALLOWED_ORIGINS` from `wrangler.jsonc` `vars` (comma-separated)
+- **Env secrets:** `.dev.vars` local / `wrangler secret put` prod
 
-## Secrets
+## Config
 
-```bash
-wrangler secret put OPERATOR_PIN   # prod
-# apps/worker/.dev.vars → OPERATOR_PIN=...  # local
-```
+| Key | Where | Purpose |
+|-----|--------|---------|
+| `ALLOWED_ORIGINS` | `wrangler.jsonc` vars | CORS allow-list (SPA origin) |
+| `ENVIRONMENT` | `wrangler.jsonc` vars | `development` / `production` |
+| `OPERATOR_PIN` | secret / `.dev.vars` | Operator login |
+| `SESSION_SECRET` | secret optional | HMAC key |
 
-## Routes (summary)
-
-| Method | Path | Auth |
-|--------|------|------|
-| POST | `/api/auth/login` | — (rate limited 10 rpm/IP) |
-| POST | `/api/auth/logout` | — |
-| GET | `/api/auth/me` | session |
-| POST | `/api/queue/:id/join` | — |
-| POST | `/api/queue/:id/leave/:ticketId` | — |
-| GET | `/api/queue/:id` | — |
-| GET | `/api/queue/:id/stream` | — (SSE) |
-| POST | `/api/queue/:id/call-next` | operator |
-| POST | `/api/queue/:id/skip/:ticketId` | operator |
-| POST | `/api/queue/:id/remove/:ticketId` | operator |
-| POST | `/api/queue/:id/reset` | operator |
-| POST | `/api/queue/:id/settings` | operator |
-
-Default queue id in UI: `main`.
+No hardcoded origin lists in source — worker reads env at runtime.

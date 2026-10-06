@@ -6,6 +6,7 @@ export type Env = {
   ENVIRONMENT: string;
   OPERATOR_PIN?: string;
   SESSION_SECRET?: string;
+  ALLOWED_ORIGINS?: string;
 };
 
 export const COOKIE_NAME = "ql_op_session";

@@ -1,9 +1,16 @@
 {
-  "$schema": "https://unpkg.com/knip@6/schema.json",
-  "ignoreExportsUsedInFile": true,
-  "workspaces": {
-    ".": {
-      "entry": ["package.json"]
-    }
-  }
+	"$schema": "https://unpkg.com/knip@6/schema.json",
+	"ignoreExportsUsedInFile": true,
+	"ignoreDependencies": ["cloudflare"],
+	"ignoreBinaries": ["wrangler"],
+	"ignore": [],
+	"workspaces": {
+		"apps/web": {
+			"entry": ["src/**/*.{ts,tsx}", "public/sw.js"]
+		},
+		"apps/worker": {
+			"entry": ["src/**/*.ts", "tests/shims/cloudflare-workers.ts"],
+			"project": ["src/**/*.ts"]
+		}
+	}
 }

@@ -17,9 +17,18 @@ pnpm typecheck && pnpm build && pnpm test
 | `pnpm worker:dev` | API on http://localhost:8787 |
 | `pnpm worker:deploy` | Deploy Worker + Durable Object |
 | `pnpm web:deploy` | Build + deploy Pages |
-| `pnpm db:migrate:local` / `db:migrate:remote` | D1 migrations |
 
-**Operator PIN:** set with `wrangler secret put OPERATOR_PIN` (prod) or `apps/worker/.dev.vars` (local).
+## Configuration (one place per app)
+
+| App | File | Keys |
+|-----|------|------|
+| Web | `apps/web/.env` or `.env.production` | `VITE_API_URL` (default `http://localhost:8787`) |
+| Worker | `apps/worker/wrangler.jsonc` | `ALLOWED_ORIGINS`, `ENVIRONMENT`, D1 `database_id` |
+| Worker secrets | `.dev.vars` / `wrangler secret put` | `OPERATOR_PIN`, optional `SESSION_SECRET` |
+
+Copy `apps/web/.env.example` and `apps/worker/.dev.vars.example` before first run.
+
+**Operator PIN (prod):** `cd apps/worker && wrangler secret put OPERATOR_PIN`
 
 ## Product
 

@@ -4,7 +4,6 @@ import {
   loginOperator,
   logoutOperator,
   clearOperatorToken,
-  isUnauthorized,
 } from "./api";
 
 interface AuthContextType {
@@ -65,22 +64,4 @@ export function useAuth() {
     throw new Error("useAuth must be used within AuthProvider");
   }
   return context;
-}
-
-/** Wrap operator API calls: 401 → clear token + flip UI to PIN login. */
-export function useRequireAuth() {
-  const { resetSession } = useAuth();
-  return useCallback(
-    async <T,>(fn: () => Promise<T>): Promise<T> => {
-      try {
-        return await fn();
-      } catch (err) {
-        if (isUnauthorized(err)) {
-          resetSession();
-        }
-        throw err;
-      }
-    },
-    [resetSession]
-  );
 }

@@ -13,6 +13,7 @@ import {
   type QueueEvent,
 } from "../lib/api";
 import { ErrorState } from "../components/ErrorState";
+import { IconAlert } from "../components/Icons";
 
 export function StudentView({ queueId }: { queueId: string }) {
   const [ticket, setTicket] = useState<Ticket | null>(null);
@@ -208,7 +209,9 @@ export function StudentView({ queueId }: { queueId: string }) {
       {calledOpen && ticket && (
         <div className="dialog-backdrop" role="dialog" aria-modal="true">
           <div className="dialog-panel">
-            <div className="dialog-icon">🔔</div>
+            <div className="dialog-icon">
+            <IconAlert size={40} />
+          </div>
             <h2>It&apos;s your turn</h2>
             <p>
               Ticket <strong>#{ticket.number}</strong> is now being served. Please head to
