@@ -9,13 +9,22 @@ const mockQueueDO = {
   }),
 };
 
-const env = {
-  ENVIRONMENT: "test",
-  DB: {} as any,
-  QUEUE_DO: mockQueueDO,
+const mockRateDO = {
+  idFromName: vi.fn().mockReturnValue("rate-id"),
+  get: vi.fn().mockReturnValue({
+    fetch: vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ limited: false, retryAfterSec: 0, remaining: 10 }))
+    ),
+  }),
 };
 
-describe("scaffold worker", () => {
+const env = {
+  ENVIRONMENT: "test",
+  QUEUE_DO: mockQueueDO,
+  RATE_LIMIT_DO: mockRateDO,
+};
+
+describe("worker scaffold", () => {
   it("GET / returns service info", async () => {
     const res = await app.fetch(new Request("http://localhost/"), env);
     expect(res.status).toBe(200);

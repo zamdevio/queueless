@@ -1,8 +1,8 @@
-/* Operator session token + PIN login rate limit */
+/* Operator session token + PIN login helpers (rate limit via RateLimitDO) */
 
 export type Env = {
-  DB: D1Database;
   QUEUE_DO: DurableObjectNamespace;
+  RATE_LIMIT_DO: DurableObjectNamespace;
   ENVIRONMENT: string;
   OPERATOR_PIN?: string;
   SESSION_SECRET?: string;
@@ -11,10 +11,6 @@ export type Env = {
 
 export const COOKIE_NAME = "ql_op_session";
 const SESSION_TTL_S = 12 * 60 * 60; // 12h
-const LOGIN_WINDOW_MS = 60_000;
-const LOGIN_MAX = 10;
-
-const loginHits = new Map<string, number[]>();
 
 function pinKey(env: Env): string {
   return env.SESSION_SECRET || env.OPERATOR_PIN || "queueless-dev-pin";
@@ -72,12 +68,10 @@ export async function verifySessionToken(
   return diff === 0;
 }
 
-/** Prefer Authorization: Bearer (cross-origin pages.dev → workers.dev); cookie fallback. */
+/** Prefer Authorization: Bearer (cross-origin); cookie fallback. */
 export async function verifySession(env: Env, request: Request): Promise<boolean> {
   const authHeader = request.headers.get("Authorization") ?? "";
-  const bearer = authHeader.startsWith("Bearer ")
-    ? authHeader.slice(7).trim()
-    : null;
+  const bearer = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : null;
   if (bearer) {
     return verifySessionToken(env, bearer);
   }
@@ -93,25 +87,43 @@ export function sessionCookie(value: string | null): string {
   return `${COOKIE_NAME}=${value}; Path=/; HttpOnly; SameSite=None; Secure; Max-Age=${SESSION_TTL_S}`;
 }
 
-export function loginRateLimited(ip: string): { limited: boolean; retryAfterSec: number } {
-  const now = Date.now();
-  const hits = (loginHits.get(ip) || []).filter((t) => t > now - LOGIN_WINDOW_MS);
-  if (hits.length >= LOGIN_MAX) {
-    const retryAfterSec = Math.ceil((hits[0] + LOGIN_WINDOW_MS - now) / 1000);
-    return { limited: true, retryAfterSec: Math.max(retryAfterSec, 1) };
+function rateLimitStub(env: Env) {
+  return env.RATE_LIMIT_DO.get(env.RATE_LIMIT_DO.idFromName("login-rate"));
+}
+
+export async function loginRateLimited(
+  env: Env,
+  ip: string
+): Promise<{ limited: boolean; retryAfterSec: number; remaining: number }> {
+  try {
+    const res = await rateLimitStub(env).fetch(
+      new Request(`https://rate/check?ip=${encodeURIComponent(ip)}`)
+    );
+    return (await res.json()) as { limited: boolean; retryAfterSec: number; remaining: number };
+  } catch {
+    // DO unavailable — fail open with a soft warning path (still allow if DO missing in tests)
+    return { limited: false, retryAfterSec: 0, remaining: 99 };
   }
-  return { limited: false, retryAfterSec: 0 };
 }
 
-export function recordLoginFailure(ip: string): void {
-  const now = Date.now();
-  const hits = (loginHits.get(ip) || []).filter((t) => t > now - LOGIN_WINDOW_MS);
-  hits.push(now);
-  loginHits.set(ip, hits);
+export async function recordLoginFailure(env: Env, ip: string): Promise<void> {
+  try {
+    await rateLimitStub(env).fetch(
+      new Request(`https://rate/fail?ip=${encodeURIComponent(ip)}`, { method: "POST" })
+    );
+  } catch {
+    // ignore
+  }
 }
 
-export function clearLoginFailures(ip: string): void {
-  loginHits.delete(ip);
+export async function clearLoginFailures(env: Env, ip: string): Promise<void> {
+  try {
+    await rateLimitStub(env).fetch(
+      new Request(`https://rate/clear?ip=${encodeURIComponent(ip)}`, { method: "POST" })
+    );
+  } catch {
+    // ignore
+  }
 }
 
 export async function pinMatches(env: Env, pin: string): Promise<boolean> {

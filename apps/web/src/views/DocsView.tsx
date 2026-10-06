@@ -129,7 +129,7 @@ function DevelopmentPage() {
             <strong>Auth:</strong> Operator PIN → signed session (Bearer + cookie)
           </li>
           <li>
-            <strong>DB:</strong> D1 binding (queue state lives in the DO)
+            <strong>State:</strong> Durable Objects only — no D1 / no external database
           </li>
         </ul>
       </Section>
@@ -195,6 +195,15 @@ function DevelopmentPage() {
             github.com/zamdevio/queueless
           </a>
         </p>
+        <p>
+          <strong>Simple Cloudflare resources only.</strong> No D1, no R2, no KV, no
+          external database. A free Cloudflare account is enough. First deploy needs:
+        </p>
+        <ul>
+          <li>Cloudflare Workers (QueueLess API + Durable Objects)</li>
+          <li>Cloudflare Pages (SPA)</li>
+          <li>One secret: <code>OPERATOR_PIN</code></li>
+        </ul>
         <ol>
           <li>
             Clone the repo:{" "}
@@ -204,15 +213,13 @@ function DevelopmentPage() {
             Install: <code>pnpm install</code> at the repo root.
           </li>
           <li>
-            Create D1: <code>wrangler d1 create queueless</code> — paste{" "}
-            <code>database_id</code> into <code>apps/worker/wrangler.jsonc</code>.
-          </li>
-          <li>
             Set secrets: <code>cd apps/worker && wrangler secret put OPERATOR_PIN</code>{" "}
             (and optionally <code>SESSION_SECRET</code>).
           </li>
           <li>
-            Deploy Worker: <code>pnpm worker:deploy</code>.
+            Deploy Worker: <code>pnpm worker:deploy</code>. Wrangler creates the Worker
+            and Durable Object classes automatically from{" "}
+            <code>wrangler.jsonc</code>.
           </li>
           <li>
             Set <code>VITE_API_URL</code> in{" "}
@@ -225,10 +232,6 @@ function DevelopmentPage() {
             <code>pnpm worker:deploy</code> again.
           </li>
         </ol>
-        <p>
-          Repo URL can change after the GitHub project is public — update the link above
-          and in the README.
-        </p>
       </Section>
 
       <Section title="Local development">
@@ -245,8 +248,8 @@ pnpm web:dev       # SPA on :5173
         <ol>
           <li>
             <strong>Initiation — Scaffold &amp; docs:</strong> pnpm workspace, docs
-            split (course vs product), maintainer control plane, Durable Object + D1
-            bindings wired, health gates (typecheck/test/build).
+            split (course vs product), maintainer control plane, Durable Objects
+            wired, health gates (typecheck/test/build).
           </li>
           <li>
             <strong>Planning — Architecture:</strong> locked decisions (DO per queue,
@@ -266,7 +269,7 @@ pnpm web:dev       # SPA on :5173
             dialog).
           </li>
           <li>
-            <strong>Deployment:</strong> Worker + D1 + Durable Object on Cloudflare
+            <strong>Deployment:</strong> Worker + Durable Objects on Cloudflare
             (free tier), Pages for the SPA, secrets via{" "}
             <code>wrangler secret put</code>, CORS allow-list per environment.
           </li>

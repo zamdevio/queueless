@@ -11,8 +11,8 @@
 
 | Priority | Vertical | Notes |
 |----------|----------|-------|
-| 1 | ETA + operator stats | Rolling avg service time; student ETA; operator stats grid |
-| 2 | Toast position | top-right; PWA Open removed (Installed only) |
+| 1 | RateLimitDO | Per-IP login limiter in DO (done this slice) |
+| 2 | Drop D1 | No DB; simple CF resources only; docs updated |
 | 3 | Course pack (next) | Management Pack after user confirms format |
 
 ## Queued — do not start
@@ -20,9 +20,8 @@
 | # | Item | Why parked |
 |---|------|------------|
 | 1 | Course Management Pack fill | Wait for user go |
-| 2 | Full RBAC / accounts | **Skip for course MVP** — PIN is enough |
-| 3 | D1 ticket history | DO holds live state; D1 optional later |
-| 4 | Join abuse rate-limit | Stretch |
+| 2 | Full RBAC / accounts | **Skipped for course MVP** — PIN is enough |
+| 3 | Join abuse rate-limit | Stretch |
 
 ## Deployed
 
@@ -38,6 +37,10 @@
 | Worker | `apps/worker/wrangler.jsonc` | `ALLOWED_ORIGINS`, `ENVIRONMENT` |
 | Secrets | `.dev.vars` / `wrangler secret put` | `OPERATOR_PIN` |
 
-## D1 note
+## Theme
 
-D1 is **bound** (`DB`) but the queue **does not use it yet** — live state is in `QueueDO`. Scaffold had drizzle scripts; they were removed until D1 history is a real need.
+First visit follows **browser** (`prefers-color-scheme`). Preference is stored in `localStorage` only after the user toggles theme.
+
+## D1 / DB
+
+**Removed.** Live state is in Durable Objects (`QueueDO`, `RateLimitDO`). Deploy needs only Workers + Pages + `OPERATOR_PIN`.

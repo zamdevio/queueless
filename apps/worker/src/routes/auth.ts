@@ -15,7 +15,7 @@ const auth = new Hono<{ Bindings: Env }>();
 
 auth.post("/login", async (c) => {
   const ip = clientIp(c);
-  const rate = loginRateLimited(ip);
+  const rate = await loginRateLimited(c.env, ip);
   if (rate.limited) {
     return c.json(
       { error: "Too many login attempts. Try again shortly." },
@@ -38,11 +38,11 @@ auth.post("/login", async (c) => {
 
   const ok = await pinMatches(c.env, pin);
   if (!ok) {
-    recordLoginFailure(ip);
+    await recordLoginFailure(c.env, ip);
     return c.json({ error: "Incorrect PIN." }, 401);
   }
 
-  clearLoginFailures(ip);
+  await clearLoginFailures(c.env, ip);
   const token = await signSession(c.env);
   c.header("Set-Cookie", sessionCookie(token), { append: true });
   return c.json({ ok: true, token });

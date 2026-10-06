@@ -3,25 +3,22 @@
 	"main": "src/index.ts",
 	"compatibility_date": "2024-11-01",
 	"compatibility_flags": ["nodejs_compat"],
-	"d1_databases": [
-		{
-			"binding": "DB",
-			"database_name": "queueless",
-			"database_id": "7c9556dc-1024-492a-8524-7bf392fa43c1"
-		}
-	],
 	"durable_objects": {
 		"bindings": [
 			{
 				"name": "QUEUE_DO",
 				"class_name": "QueueDO"
+			},
+			{
+				"name": "RATE_LIMIT_DO",
+				"class_name": "RateLimitDO"
 			}
 		]
 	},
 	"migrations": [
 		{
 			"tag": "v1",
-			"new_sqlite_classes": ["QueueDO"]
+			"new_sqlite_classes": ["QueueDO", "RateLimitDO"]
 		}
 	],
 	"vars": {
