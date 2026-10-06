@@ -90,27 +90,10 @@ export function OperatorDemoView({
 
   return (
     <div className="operator-view demo-mode">
-      <div className="demo-banner" role="status">
-        <strong>Demo mode</strong> — full layout preview, no backend actions.{" "}
-        {onSignIn ? (
-          <button type="button" className="demo-signin" onClick={onSignIn}>
-            Sign in with PIN
-          </button>
-        ) : null}
-      </div>
-
       <div className="view-header">
         <div>
           <h1>Operator · {queueId}</h1>
           <p className="view-subtitle">Live queue control (demo)</p>
-        </div>
-        <div className="header-actions">
-          <button type="button" className="btn-secondary" onClick={demoAction}>
-            Copy board link
-          </button>
-          <button type="button" className="btn-secondary" onClick={demoAction}>
-            Sign out
-          </button>
         </div>
       </div>
 
@@ -193,6 +176,24 @@ export function OperatorDemoView({
         </div>
 
         <aside className="ops-side">
+          <div className="demo-banner" role="status">
+            <strong>Demo mode</strong> — layout preview, no backend actions.
+            {onSignIn ? (
+              <button type="button" className="demo-signin" onClick={onSignIn}>
+                Sign in with PIN
+              </button>
+            ) : null}
+          </div>
+
+          <div className="ops-side-actions">
+            <button type="button" className="btn-secondary" onClick={demoAction}>
+              Copy board link
+            </button>
+            <button type="button" className="btn-secondary" onClick={demoAction}>
+              Sign out
+            </button>
+          </div>
+
           <div className="ops-stats">
             <div className="stat-card">
               <div className="stat-content">

@@ -67,21 +67,62 @@ export function StudentView({ queueId }: { queueId: string }) {
     };
   }, [queueId, loadBoard]);
 
-  // SSE — board updates automatically (capacity counts included)
+  // SSE — board + immediate ticket state (called / skip / remove asap)
   useEffect(() => {
     let disposed = false;
     let evtSource: EventSource | null = null;
 
     evtSource = subscribeToQueue(queueId, (event: QueueEvent) => {
+      if (event.event === "snapshot") {
+        setBoard(event.data);
+        setTicket((prev) => {
+          if (!prev) return prev;
+          const match = (event.data?.tickets || []).find((t: Ticket) => t.id === prev.id);
+          return match ? { ...prev, ...match } : prev;
+        });
+        return;
+      }
+
       setBoard((prev) => applyEvent(prev, event));
+
+      // Keep my ticket state in sync immediately (no reload needed)
+      if (event.event === "call" && event.data?.ticketId) {
+        setTicket((prev) => {
+          if (prev && prev.id === event.data.ticketId) {
+            return {
+              ...prev,
+              state: "called" as const,
+              calledAt: event.data.calledAt ?? Date.now(),
+            };
+          }
+          return prev;
+        });
+        if (ticket && event.data.ticketId === ticket.id && !calledRef.current) {
+          calledRef.current = true;
+          setCalledOpen(true);
+        }
+      }
+
       if (
-        event.event === "call" &&
-        ticket &&
-        event.data?.ticketId === ticket.id &&
-        !calledRef.current
+        (event.event === "skip" || event.event === "remove" || event.event === "serve") &&
+        event.data?.ticketId
       ) {
-        calledRef.current = true;
-        setCalledOpen(true);
+        setTicket((prev) => {
+          if (prev && prev.id === event.data.ticketId) {
+            const state =
+              event.event === "skip"
+                ? ("skipped" as const)
+                : event.event === "remove"
+                  ? ("removed" as const)
+                  : ("served" as const);
+            return { ...prev, state };
+          }
+          return prev;
+        });
+        if (event.event === "serve" && ticket && event.data.ticketId === ticket.id) {
+          setTicket(null);
+          calledRef.current = false;
+        }
       }
     });
 

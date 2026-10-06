@@ -222,24 +222,6 @@ export function OperatorView({ queueId }: { queueId: string }) {
           <h1>Operator · {queueId}</h1>
           <p className="view-subtitle">Live queue control</p>
         </div>
-        <div className="header-actions">
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() => {
-              const url = `${window.location.origin}/board/${queueId}`;
-              navigator.clipboard.writeText(url).then(
-                () => toast.success("Board link copied"),
-                () => toast.error("Could not copy link")
-              );
-            }}
-          >
-            Copy board link
-          </button>
-          <button type="button" className="btn-secondary" onClick={handleLogout}>
-            Sign out
-          </button>
-        </div>
       </div>
 
       {error && (
@@ -360,6 +342,25 @@ export function OperatorView({ queueId }: { queueId: string }) {
         </div>
 
         <aside className="ops-side">
+          <div className="ops-side-actions">
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => {
+                const url = `${window.location.origin}/board/${queueId}`;
+                navigator.clipboard.writeText(url).then(
+                  () => toast.success("Board link copied"),
+                  () => toast.error("Could not copy link")
+                );
+              }}
+            >
+              Copy board link
+            </button>
+            <button type="button" className="btn-secondary" onClick={handleLogout}>
+              Sign out
+            </button>
+          </div>
+
           <div className="ops-stats">
             <div className="stat-card">
               <div className="stat-content">

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { IconGear } from "./Icons";
+import { SelectMenu } from "./SelectMenu";
 
 export type PageItem = { id: string };
 
@@ -84,25 +84,18 @@ export function Pagination<T extends PageItem>({
           }}
           aria-label={`Search ${label}`}
         />
-        <label className="pagination-perpage">
-          <IconGear size={14} />
-          <select
-            className="pagination-select"
+        <div className="pagination-perpage">
+          <SelectMenu
             value={perPage}
-            onChange={(e) => {
-              setPerPage(Number(e.target.value));
+            options={PER_PAGE_OPTIONS}
+            onChange={(n) => {
+              setPerPage(n);
               setPage(1);
               setPageDraft("1");
             }}
-            aria-label="Items per page"
-          >
-            {PER_PAGE_OPTIONS.map((n) => (
-              <option key={n} value={n}>
-                {n} per page
-              </option>
-            ))}
-          </select>
-        </label>
+            ariaLabel="Items per page"
+          />
+        </div>
       </div>
 
       {children(pageItems)}

@@ -1,4 +1,5 @@
 import { IconBook, IconGear, IconInfo } from "../components/Icons";
+import { CommandBlock, CopyButton } from "../components/SelectMenu";
 import { getApiBase } from "../lib/api";
 
 function Section({
@@ -195,61 +196,83 @@ function DevelopmentPage() {
       <Section title="Deploy from GitHub">
         <p>
           Repo:{" "}
-          <a
-            href="https://github.com/zamdevio/queueless"
-            target="_blank"
-            rel="noreferrer"
-          >
+          <a href="https://github.com/zamdevio/queueless" target="_blank" rel="noreferrer">
             github.com/zamdevio/queueless
           </a>
         </p>
         <p>
-          <strong>Simple Cloudflare resources only.</strong> No D1, no R2, no KV, no
-          external database. A free Cloudflare account is enough. First deploy needs:
+          <strong>Free Cloudflare tier only.</strong> No D1, R2, KV, or external database.
+          Resources: <strong>Workers</strong> (API + Durable Objects) +{" "}
+          <strong>Pages</strong> (SPA) + one secret <code>OPERATOR_PIN</code>.
         </p>
+
+        <h3>1. Setup (from git to ready repo)</h3>
+        <CommandBlock
+          title="Clone & install"
+          code={`git clone https://github.com/zamdevio/queueless.git
+cd queueless
+pnpm install
+
+# Web API base (local default is localhost:8787)
+cp apps/web/.env.example apps/web/.env
+# edit apps/web/.env → VITE_API_URL=http://localhost:8787
+
+# Operator PIN for local wrangler dev
+cp apps/worker/.dev.vars.example apps/worker/.dev.vars
+# nano apps/worker/.dev.vars → OPERATOR_PIN=your-pin`}
+        />
+
+        <h3>2. Local run</h3>
+        <CommandBlock
+          code={`pnpm worker:dev    # API :8787
+pnpm web:dev       # SPA :5173`}
+        />
+
+        <h3>3. Remote deploy (production)</h3>
+        <p>Ensure these configs first, then run the commands:</p>
         <ul>
-          <li>Cloudflare Workers (QueueLess API + Durable Objects)</li>
-          <li>Cloudflare Pages (SPA)</li>
-          <li>One secret: <code>OPERATOR_PIN</code></li>
+          <li>
+            <code>apps/web/.env.production</code> →{" "}
+            <code>VITE_API_URL=https://YOUR-WORKER.workers.dev</code>
+          </li>
+          <li>
+            <code>apps/worker/wrangler.jsonc</code> →{" "}
+            <code>ALLOWED_ORIGINS</code> includes your Pages URL
+          </li>
+          <li>
+            <code>wrangler login</code> (or{" "}
+            <code>CLOUDFLARE_API_TOKEN</code>) on the free account
+          </li>
         </ul>
-        <ol>
-          <li>
-            Clone the repo:{" "}
-            <code>git clone https://github.com/zamdevio/queueless.git</code>
-          </li>
-          <li>
-            Install: <code>pnpm install</code> at the repo root.
-          </li>
-          <li>
-            Set secrets: <code>cd apps/worker && wrangler secret put OPERATOR_PIN</code>{" "}
-            (and optionally <code>SESSION_SECRET</code>).
-          </li>
-          <li>
-            Deploy Worker: <code>pnpm worker:deploy</code>. Wrangler creates the Worker
-            and Durable Object classes automatically from{" "}
-            <code>wrangler.jsonc</code>.
-          </li>
-          <li>
-            Set <code>VITE_API_URL</code> in{" "}
-            <code>apps/web/.env.production</code> to your Worker URL, then{" "}
-            <code>pnpm web:deploy</code>.
-          </li>
-          <li>
-            Update <code>ALLOWED_ORIGINS</code> in{" "}
-            <code>apps/worker/wrangler.jsonc</code> to include your Pages domain, then{" "}
-            <code>pnpm worker:deploy</code> again.
-          </li>
-        </ol>
-      </Section>
+        <CommandBlock
+          code={`cd apps/worker && wrangler secret put OPERATOR_PIN   # prod PIN
+cd ../.. && pnpm worker:deploy
+pnpm web:deploy
+# redeploy worker if ALLOWED_ORIGINS changed`}
+        />
 
-      <Section title="Local development">
-        <pre>{`pnpm install
-pnpm worker:dev    # API on :8787
-pnpm web:dev       # SPA on :5173
-pnpm test:policies # worker policy tests
+        <h3>4. Agent deploy prompt</h3>
+        <p>Copy this into an agent that has the repo + wrangler access:</p>
+        <CopyButton
+          label="Copy agent prompt"
+          text={`Deploy QueueLess from github.com/zamdevio/queueless on a free Cloudflare account.
 
-# apps/web/.env         → VITE_API_URL=http://localhost:8787
-# apps/worker/.dev.vars → OPERATOR_PIN=...`}</pre>
+Steps:
+1. git clone https://github.com/zamdevio/queueless.git && cd queueless && pnpm install
+2. wrangler login
+3. From apps/worker: wrangler secret put OPERATOR_PIN  (set a strong PIN)
+4. Set apps/web/.env.production VITE_API_URL to the Worker URL (deploy worker first to learn it)
+5. Ensure apps/worker/wrangler.jsonc ALLOWED_ORIGINS includes the Pages origin (https://YOUR-PAGES.pages.dev and any *.thequeueless.pages.dev subdomain if using that project)
+6. pnpm worker:deploy  → Worker + QueueDO + RateLimitDO (no D1)
+7. Set VITE_API_URL=https://YOUR-WORKER.workers.dev in apps/web/.env.production
+8. pnpm web:deploy  → Pages SPA
+9. If ALLOWED_ORIGINS was wrong, update wrangler.jsonc and pnpm worker:deploy again
+10. Smoke test: /student/main join + /operator/main PIN login + call next
+
+Notes:
+- Free tier only: Workers + Pages + Durable Objects + one secret. No D1/KV/R2.
+- Do not commit .dev.vars or real PINs.`}
+        />
       </Section>
 
       <Section title="Project phases (how QueueLess was built)">
