@@ -16,8 +16,9 @@ export interface Ticket {
   state: TicketState;
   createdAt: number;
   meta?: TicketMeta;
-  /** When this ticket was called (epoch ms); used for rolling ETA samples */
   calledAt?: number;
+  /** Optional customer display name */
+  name?: string;
 }
 
 export interface QueueSettings {
@@ -25,15 +26,10 @@ export interface QueueSettings {
 }
 
 export interface QueueStats {
-  /** Rolling average service time in ms (time between call-next events) */
   avgServiceMs: number | null;
-  /** How many service samples in the rolling window */
   samples: number;
-  /** Last observed service duration in ms */
   lastServiceMs: number | null;
-  /** Total tickets ever issued this session */
   issued: number;
-  /** Tickets currently waiting */
   waiting: number;
 }
 
@@ -44,6 +40,8 @@ export interface QueueBoard {
   settings: QueueSettings;
   waitingCount: number;
   stats: QueueStats;
+  /** Active waiting tickets by ipHash (for same-IP duplicate warn) */
+  byIp: Record<string, { ticketId: string; number: number }[]>;
 }
 
 export interface QueueEvent {
@@ -67,7 +65,6 @@ export class QueueDO extends DurableObject {
   private nowServing: number | null = null;
   private nextNumber = 1;
   private settings: QueueSettings = { maxWaiting: DEFAULT_MAX_WAITING };
-  /** Rolling service-time samples (ms between consecutive call-next) */
   private serviceSamples: number[] = [];
   private lastServiceMs: number | null = null;
   private subscribers = new Set<WritableStreamDefaultWriter<Uint8Array>>();
@@ -82,9 +79,7 @@ export class QueueDO extends DurableObject {
           this.tickets = new Map(data.tickets || []);
           this.nowServing = data.nowServing ?? null;
           this.nextNumber = data.nextNumber ?? 1;
-          this.settings = {
-            maxWaiting: data.settings?.maxWaiting ?? DEFAULT_MAX_WAITING,
-          };
+          this.settings = { maxWaiting: data.settings?.maxWaiting ?? DEFAULT_MAX_WAITING };
           this.serviceSamples = Array.isArray(data.serviceSamples) ? data.serviceSamples : [];
           this.lastServiceMs = typeof data.lastServiceMs === "number" ? data.lastServiceMs : null;
         }
@@ -114,6 +109,16 @@ export class QueueDO extends DurableObject {
       issued: this.nextNumber - 1,
       waiting: this.waitingCount(),
     };
+  }
+
+  private byIpMap(): Record<string, { ticketId: string; number: number }[]> {
+    const out: Record<string, { ticketId: string; number: number }[]> = {};
+    for (const t of this.tickets.values()) {
+      if (t.state !== "waiting" || !t.meta?.ipHash) continue;
+      if (!out[t.meta.ipHash]) out[t.meta.ipHash] = [];
+      out[t.meta.ipHash].push({ ticketId: t.id, number: t.number });
+    }
+    return out;
   }
 
   private pushServiceSample(ms: number): void {
@@ -153,14 +158,13 @@ export class QueueDO extends DurableObject {
       case "POST": {
         switch (action) {
           case "join": {
-            let meta: TicketMeta | undefined;
+            let body: { meta?: TicketMeta; name?: string } = {};
             try {
-              const body = await request.json<{ meta?: TicketMeta }>();
-              meta = body?.meta;
+              body = await request.json();
             } catch {
-              meta = undefined;
+              body = {};
             }
-            return this.handleJoin(meta);
+            return this.handleJoin(body.meta, body.name);
           }
           case "leave":
             return this.handleLeave(param || "");
@@ -190,8 +194,10 @@ export class QueueDO extends DurableObject {
         }
       }
       case "GET": {
-        if (action === "stream") {
-          return this.handleSse(request);
+        if (action === "stream") return this.handleSse(request);
+        if (action === "export") {
+          const format = url.searchParams.get("format") || "json";
+          return this.handleExport(format);
         }
         return this.handleGetBoard();
       }
@@ -208,10 +214,79 @@ export class QueueDO extends DurableObject {
       settings: { ...this.settings },
       waitingCount: this.waitingCount(),
       stats: this.stats(),
+      byIp: this.byIpMap(),
     };
   }
 
-  private async handleJoin(meta?: TicketMeta): Promise<Response> {
+  private csvEscape(v: unknown): string {
+    const s = v == null ? "" : String(v);
+    if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+    return s;
+  }
+
+  private handleExport(format: string): Response {
+    const rows = [...this.tickets.values()].sort((a, b) => a.number - b.number);
+    const header = ["number", "name", "state", "country", "city", "language", "ipHash", "userAgent"];
+
+    if (format === "csv") {
+      const lines = [header.join(",")];
+      for (const t of rows) {
+        lines.push(
+          [
+            t.number,
+            t.name || "",
+            t.state,
+            t.meta?.country || "",
+            t.meta?.city || "",
+            t.meta?.language || "",
+            t.meta?.ipHash || "",
+            t.meta?.userAgent || "",
+          ]
+            .map((v) => this.csvEscape(v))
+            .join(",")
+        );
+      }
+      return new Response(lines.join("\n"), {
+        headers: {
+          "Content-Type": "text/csv; charset=utf-8",
+          "Content-Disposition": `attachment; filename="queue-export.csv"`,
+        },
+      });
+    }
+
+    if (format === "markdown" || format === "md") {
+      const lines = [
+        `# Queue export`,
+        ``,
+        `Now serving: ${this.nowServing ?? "—"}`,
+        `Issued: ${this.nextNumber - 1} · Waiting: ${this.waitingCount()}`,
+        ``,
+        `| # | Name | State | Country | City |`,
+        `|---|------|-------|---------|------|`,
+      ];
+      for (const t of rows) {
+        lines.push(
+          `| ${t.number} | ${this.csvEscape(t.name || "")} | ${t.state} | ${t.meta?.country || ""} | ${t.meta?.city || ""} |`
+        );
+      }
+      return new Response(lines.join("\n"), {
+        headers: {
+          "Content-Type": "text/markdown; charset=utf-8",
+          "Content-Disposition": `attachment; filename="queue-export.md"`,
+        },
+      });
+    }
+
+    // default json
+    return Response.json({
+      nowServing: this.nowServing,
+      nextNumber: this.nextNumber,
+      waiting: this.waitingCount(),
+      tickets: rows,
+    });
+  }
+
+  private async handleJoin(meta?: TicketMeta, name?: string): Promise<Response> {
     const waiting = this.waitingCount();
     if (waiting >= this.settings.maxWaiting) {
       return new Response(
@@ -222,6 +297,19 @@ export class QueueDO extends DurableObject {
         { status: 409 }
       );
     }
+
+    // Same-IP duplicate warn (not a hard block)
+    const ipHash = meta?.ipHash;
+    let duplicateTicketId: string | null = null;
+    if (ipHash) {
+      for (const t of this.tickets.values()) {
+        if (t.state === "waiting" && t.meta?.ipHash === ipHash) {
+          duplicateTicketId = t.id;
+          break;
+        }
+      }
+    }
+
     const ticketId = crypto.randomUUID();
     const ticket: Ticket = {
       id: ticketId,
@@ -229,11 +317,16 @@ export class QueueDO extends DurableObject {
       state: "waiting",
       createdAt: Date.now(),
       meta,
+      name: name?.trim().slice(0, 40) || undefined,
     };
     this.tickets.set(ticketId, ticket);
     await this.persist();
     this.broadcast({ event: "join", data: ticket });
-    return Response.json(ticket);
+    return Response.json({
+      ...ticket,
+      duplicateFromSameIp: duplicateTicketId ? duplicateTicketId !== ticketId : false,
+      existingTicketId: duplicateTicketId,
+    });
   }
 
   private async handleLeave(ticketId: string): Promise<Response> {
@@ -254,7 +347,6 @@ export class QueueDO extends DurableObject {
       return Response.json(null);
     }
 
-    // Service sample = time since previous ticket was called
     if (this.nowServing !== null) {
       const prev = [...this.tickets.values()].find(
         (t) => t.number === this.nowServing && t.calledAt != null

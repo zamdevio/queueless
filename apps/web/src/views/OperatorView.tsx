@@ -8,6 +8,8 @@ import {
   updateQueueSettings,
   subscribeToQueue,
   applyEvent,
+  exportQueueHistory,
+  downloadExport,
   errMessage,
   errRetryable,
   isUnauthorized,
@@ -146,6 +148,16 @@ export function OperatorView({ queueId }: { queueId: string }) {
     }
   }
 
+  async function handleExport(format: "csv" | "json" | "markdown") {
+    try {
+      const data = await exportQueueHistory(queueId, format);
+      downloadExport(queueId, format, data);
+      toast.success(`Exported ${format.toUpperCase()}`);
+    } catch (err) {
+      reportError(err);
+    }
+  }
+
   async function handleLogout() {
     try {
       await logout();
@@ -189,9 +201,24 @@ export function OperatorView({ queueId }: { queueId: string }) {
     <div className="operator-view">
       <div className="view-header">
         <h1>Operator · {queueId}</h1>
-        <button type="button" className="btn-secondary" onClick={handleLogout}>
-          Sign out
-        </button>
+        <div className="header-actions">
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => {
+              const url = `${window.location.origin}/board/${queueId}`;
+              navigator.clipboard.writeText(url).then(
+                () => toast.success("Board link copied"),
+                () => toast.error("Could not copy link")
+              );
+            }}
+          >
+            Copy board link
+          </button>
+          <button type="button" className="btn-secondary" onClick={handleLogout}>
+            Sign out
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -261,13 +288,29 @@ export function OperatorView({ queueId }: { queueId: string }) {
         </div>
       )}
 
+      <div className="export-row">
+        <span className="export-label">Export history</span>
+        <button type="button" className="btn-secondary" onClick={() => handleExport("csv")}>
+          CSV
+        </button>
+        <button type="button" className="btn-secondary" onClick={() => handleExport("json")}>
+          JSON
+        </button>
+        <button type="button" className="btn-secondary" onClick={() => handleExport("markdown")}>
+          Markdown
+        </button>
+      </div>
+
       <div className="queue-list">
         <h2>Waiting customers</h2>
         <ul>
           {waitingTickets.map((t) => (
             <li key={t.id}>
               <div className="ticket-row">
-                <span className="ticket-num">#{t.number}</span>
+                <span className="ticket-num">
+                  #{t.number}
+                  {t.name ? ` · ${t.name}` : ""}
+                </span>
                 <span className="ticket-meta">
                   {[
                     t.meta?.country,
@@ -296,7 +339,8 @@ export function OperatorView({ queueId }: { queueId: string }) {
             .filter((t) => t.state !== "waiting")
             .map((t) => (
               <li key={t.id} className={t.state}>
-                #{t.number} — {t.state}
+                #{t.number}
+                {t.name ? ` · ${t.name}` : ""} — {t.state}
               </li>
             ))}
           {tickets.filter((t) => t.state !== "waiting").length === 0 && (

@@ -16,9 +16,10 @@ import {
   IconPanelLeftOpen,
   IconMenu,
   IconX,
+  IconQueue,
 } from "./Icons";
 
-type NavView = "landing" | "student" | "operator" | "docs";
+type NavView = "landing" | "student" | "operator" | "docs" | "board";
 type DocsPage = "guide" | "development" | "about";
 
 interface SidebarProps {
@@ -198,6 +199,17 @@ export function Sidebar({
         >
           <IconBriefcase size={16} />
           {!iconsOnly && <span className="nav-label">Operator</span>}
+        </button>
+
+        <button
+          className={`nav-item ${currentView === "board" ? "active" : ""} ${
+            iconsOnly ? "nav-item-compact" : ""
+          }`}
+          onClick={() => go("board")}
+          title="Live board (monitor)"
+        >
+          <IconQueue size={16} />
+          {!iconsOnly && <span className="nav-label">Board</span>}
         </button>
 
         <div className={`nav-divider ${iconsOnly ? "nav-divider-compact" : ""}`}>

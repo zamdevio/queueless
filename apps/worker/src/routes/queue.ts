@@ -9,6 +9,10 @@ function getQueueDO(c: any, queueId: string) {
   return c.env.QUEUE_DO.get(c.env.QUEUE_DO.idFromName(queueId));
 }
 
+function getRateDO(c: any) {
+  return c.env.RATE_LIMIT_DO.get(c.env.RATE_LIMIT_DO.idFromName("login-rate"));
+}
+
 async function requireOperator(c: any, next: () => Promise<void>) {
   const ok = await verifySession(c.env, c.req.raw);
   if (!ok) {
@@ -17,27 +21,77 @@ async function requireOperator(c: any, next: () => Promise<void>) {
   await next();
 }
 
+async function hashIp(ip: string): Promise<string | undefined> {
+  try {
+    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`ql:${ip}`));
+    return [...new Uint8Array(buf)].slice(0, 8).map((b) => b.toString(16).padStart(2, "0")).join("");
+  } catch {
+    return undefined;
+  }
+}
+
 queue.post("/:queueId/join", async (c) => {
   const queueId = c.req.param("queueId")!;
-  const queueDO = getQueueDO(c, queueId);
+  const ip = clientIp(c);
+  const ipHash = await hashIp(ip);
 
+  // Join abuse: max 5 joins / 60s per IP per queue
+  try {
+    const joinKey = `join:${queueId}`;
+    const rate = await getRateDO(c).fetch(
+      new Request(
+        `https://rate/check?ip=${encodeURIComponent(ip)}&key=${encodeURIComponent(joinKey)}`
+      )
+    );
+    const rateData = (await rate.json()) as { limited: boolean; retryAfterSec: number };
+    if (rateData.limited) {
+      return c.json(
+        { error: "Too many join attempts from this network. Try again shortly." },
+        429,
+        { "Retry-After": String(rateData.retryAfterSec) } as any
+      );
+    }
+  } catch {
+    // rate limiter unavailable — allow join
+  }
+
+  const queueDO = getQueueDO(c, queueId);
   const meta = {
     userAgent: c.req.header("User-Agent")?.slice(0, 300),
     country: c.req.header("CF-IPCountry") || undefined,
     city: c.req.header("CF-IPCity") || undefined,
     language: c.req.header("Accept-Language")?.split(",")[0]?.slice(0, 24),
-    ipHash: await hashIp(clientIp(c)),
+    ipHash,
   };
 
   const body = await c.req.json().catch(() => ({}));
+
   const res = await queueDO.fetch(
     new Request("https://queue/join", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ meta: { ...meta, ...(body?.meta || {}) } }),
+      body: JSON.stringify({
+        meta: { ...meta, ...(body?.meta || {}) },
+        name: body?.name,
+      }),
     })
   );
-  return res;
+
+  const data = await res.json().catch(() => null);
+  if (res.ok && data) {
+    try {
+      await getRateDO(c).fetch(
+        new Request(
+          `https://rate/fail?ip=${encodeURIComponent(ip)}&key=${encodeURIComponent(`join:${queueId}`)}`,
+          { method: "POST" }
+        )
+      );
+    } catch {
+      // ignore
+    }
+  }
+
+  return c.json(data, res.status as any);
 });
 
 queue.post("/:queueId/leave/:ticketId", async (c) => {
@@ -86,6 +140,15 @@ queue.post("/:queueId/settings", requireOperator, async (c) => {
   );
 });
 
+queue.get("/:queueId/export", requireOperator, async (c) => {
+  const queueId = c.req.param("queueId")!;
+  const format = c.req.query("format") || "json";
+  const queueDO = getQueueDO(c, queueId);
+  return queueDO.fetch(
+    new Request(`https://queue/export?format=${encodeURIComponent(format)}`)
+  );
+});
+
 queue.get("/:queueId", async (c) => {
   const queueId = c.req.param("queueId")!;
   const queueDO = getQueueDO(c, queueId);
@@ -93,12 +156,3 @@ queue.get("/:queueId", async (c) => {
 });
 
 export default queue;
-
-async function hashIp(ip: string): Promise<string | undefined> {
-  try {
-    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`ql:${ip}`));
-    return [...new Uint8Array(buf)].slice(0, 8).map((b) => b.toString(16).padStart(2, "0")).join("");
-  } catch {
-    return undefined;
-  }
-}

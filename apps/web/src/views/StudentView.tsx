@@ -22,6 +22,7 @@ export function StudentView({ queueId }: { queueId: string }) {
   const [error, setError] = useState<{ message: string; retryable: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
+  const [displayName, setDisplayName] = useState("");
   const [calledOpen, setCalledOpen] = useState(false);
   const calledRef = useRef(false);
 
@@ -48,9 +49,15 @@ export function StudentView({ queueId }: { queueId: string }) {
         userAgent: navigator.userAgent.slice(0, 300),
         language: navigator.language,
       };
-      const newTicket = await joinQueue(queueId, meta);
+      const newTicket = await joinQueue(queueId, meta, displayName || undefined);
       setTicket(newTicket);
-      toast.success(`Joined queue — ticket #${newTicket.number}`);
+      if (newTicket.duplicateFromSameIp) {
+        toast.warning(
+          `This network already has ticket #${newTicket.existingTicketId ? "in queue" : ""} — you can still join, but staff may see two tickets from the same place.`
+        );
+      } else {
+        toast.success(`Joined queue — ticket #${newTicket.number}`);
+      }
       await loadBoard();
     } catch (err) {
       setError({
@@ -61,7 +68,7 @@ export function StudentView({ queueId }: { queueId: string }) {
     } finally {
       setJoining(false);
     }
-  }, [queueId, loadBoard]);
+  }, [queueId, loadBoard, displayName]);
 
   useEffect(() => {
     let disposed = false;
@@ -154,19 +161,34 @@ export function StudentView({ queueId }: { queueId: string }) {
       {!ticket ? (
         <div className="join-panel">
           <p className="join-hint">
-            Join anonymously to get a ticket number. You&apos;ll see your position and when
-            it&apos;s your turn.
+            Join to get a ticket number. A display name is optional (shown to staff only).
           </p>
           <div className="queue-capacity">
             {waitingCount}/{maxWaiting} waiting
           </div>
-          <button
-            className="btn-primary"
-            onClick={join}
-            disabled={joining || waitingCount >= maxWaiting}
+          <form
+            className="join-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              join();
+            }}
           >
-            {joining ? "Joining…" : waitingCount >= maxWaiting ? "Queue full" : "Join queue"}
-          </button>
+            <input
+              type="text"
+              placeholder="Display name (optional)"
+              value={displayName}
+              maxLength={40}
+              onChange={(e) => setDisplayName(e.target.value)}
+              aria-label="Display name"
+            />
+            <button
+              type="submit"
+              className="btn-primary"
+              disabled={joining || waitingCount >= maxWaiting}
+            >
+              {joining ? "Joining…" : waitingCount >= maxWaiting ? "Queue full" : "Join queue"}
+            </button>
+          </form>
         </div>
       ) : (
         <>
@@ -211,6 +233,7 @@ export function StudentView({ queueId }: { queueId: string }) {
             <li key={t.id} className={ticket && t.id === ticket.id ? "self" : ""}>
               <span>
                 #{t.number}
+                {t.name ? ` · ${t.name}` : ""}
                 {ticket && t.id === ticket.id ? " (you)" : ""}
               </span>
             </li>

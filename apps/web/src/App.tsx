@@ -5,9 +5,10 @@ import { LandingView } from "./views/LandingView";
 import { StudentView } from "./views/StudentView";
 import { OperatorView } from "./views/OperatorView";
 import { DocsView } from "./views/DocsView";
+import { BoardView } from "./views/BoardView";
 import { useState, useEffect } from "react";
 
-type View = "landing" | "student" | "operator" | "docs";
+type View = "landing" | "student" | "operator" | "docs" | "board";
 type DocsPage = "guide" | "development" | "about";
 
 function parseLocation(): { view: View; queueId: string; docsPage: DocsPage } {
@@ -15,8 +16,10 @@ function parseLocation(): { view: View; queueId: string; docsPage: DocsPage } {
   const student = path.match(/^\/student\/([^/]+)$/);
   const operator = path.match(/^\/operator\/([^/]+)$/);
   const docs = path.match(/^\/docs\/(guide|development|about)$/);
+  const board = path.match(/^\/board\/([^/]+)$/);
   if (student) return { view: "student", queueId: student[1], docsPage: "guide" };
   if (operator) return { view: "operator", queueId: operator[1], docsPage: "guide" };
+  if (board) return { view: "board", queueId: board[1], docsPage: "guide" };
   if (docs) return { view: "docs", queueId: "main", docsPage: docs[1] as DocsPage };
   return { view: "landing", queueId: "main", docsPage: "guide" };
 }
@@ -35,6 +38,7 @@ function AppContent() {
     let path = "/";
     if (nextView === "student") path = `/student/${nextQueueId}`;
     else if (nextView === "operator") path = `/operator/${nextQueueId}`;
+    else if (nextView === "board") path = `/board/${nextQueueId}`;
     else if (nextView === "docs") path = `/docs/${docsPage}`;
     window.history.pushState(null, "", path);
     setLocation({ view: nextView, queueId: nextQueueId, docsPage });
@@ -53,6 +57,7 @@ function AppContent() {
         {view === "landing" && <LandingView onNavigate={navigateTo} />}
         {view === "student" && <StudentView queueId={queueId} />}
         {view === "operator" && <OperatorView queueId={queueId} />}
+        {view === "board" && <BoardView queueId={queueId} />}
         {view === "docs" && <DocsView page={docsPage} />}
       </main>
     </div>

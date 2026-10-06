@@ -923,3 +923,119 @@
   color: var(--color-text-secondary);
   margin-top: 4px;
 }
+
+/* ===== Join form / export / board ===== */
+.join-form {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.join-form input {
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-text);
+  font-size: 14px;
+  min-width: 200px;
+}
+
+.export-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.export-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.board-view {
+  max-width: 900px;
+  margin: 0 auto;
+  text-align: center;
+  padding: 24px 0;
+}
+
+.board-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+}
+
+.board-header h1 {
+  margin: 0;
+  font-size: 28px;
+}
+
+.board-now {
+  background: linear-gradient(135deg, var(--color-success), #059669);
+  color: white;
+  padding: 16px 24px;
+  border-radius: var(--radius-lg);
+  min-width: 160px;
+}
+
+.board-label {
+  display: block;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.9;
+}
+
+.board-number {
+  display: block;
+  font-size: 40px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.board-waiting h2 {
+  margin-bottom: 12px;
+  color: var(--color-text-secondary);
+  font-size: 16px;
+}
+
+.board-tickets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+
+.board-ticket {
+  background-color: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  min-width: 100px;
+}
+
+.board-ticket-num {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.board-ticket-name {
+  display: block;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+.board-footer {
+  margin-top: 28px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}

@@ -18,6 +18,7 @@ export type Ticket = {
   createdAt: number;
   meta?: TicketMeta;
   calledAt?: number;
+  name?: string;
 };
 
 export type QueueStats = {
@@ -28,6 +29,11 @@ export type QueueStats = {
   waiting: number;
 };
 
+export type JoinResult = Ticket & {
+  duplicateFromSameIp?: boolean;
+  existingTicketId?: string | null;
+};
+
 export type Board = {
   tickets: Ticket[];
   nowServing: number | null;
@@ -35,6 +41,7 @@ export type Board = {
   settings?: { maxWaiting: number };
   waitingCount?: number;
   stats?: QueueStats;
+  byIp?: Record<string, { ticketId: string; number: number }[]>;
 };
 
 /**
@@ -193,11 +200,15 @@ export async function operatorMe(): Promise<boolean> {
 
 /* ===== Queue (public) ===== */
 
-export async function joinQueue(queueId: string, meta?: TicketMeta): Promise<Ticket> {
+export async function joinQueue(
+  queueId: string,
+  meta?: TicketMeta,
+  name?: string
+): Promise<JoinResult> {
   const res = await apiFetch(`/api/queue/${queueId}/join`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ meta }),
+    body: JSON.stringify({ meta, name }),
   });
   return res.json();
 }
@@ -236,6 +247,38 @@ export async function updateQueueSettings(queueId: string, maxWaiting: number): 
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ maxWaiting }),
   });
+}
+
+/** Operator export — returns raw text (CSV/MD) or JSON object. */
+export async function exportQueueHistory(
+  queueId: string,
+  format: "csv" | "json" | "markdown"
+): Promise<string | object> {
+  const res = await apiFetch(`/api/queue/${queueId}/export?format=${format}`);
+  if (format === "json") return res.json();
+  return res.text();
+}
+
+export function downloadExport(
+  queueId: string,
+  format: "csv" | "json" | "markdown",
+  content: string | object
+): void {
+  const ext = format === "markdown" ? "md" : format;
+  const mime =
+    format === "csv"
+      ? "text/csv;charset=utf-8"
+      : format === "markdown"
+        ? "text/markdown;charset=utf-8"
+        : "application/json;charset=utf-8";
+  const body = typeof content === "string" ? content : JSON.stringify(content, null, 2);
+  const blob = new Blob([body], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `queueless-${queueId}-export.${ext}`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export function subscribeToQueue(
