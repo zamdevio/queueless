@@ -14,3 +14,7 @@
 | 2026-10-06 | Device ticket restore · pagination · history export · board page · policies script |
 | 2026-10-06 | Confirm dialogs · max-waiting guard · serve+join-again · operator Claude grid · per-page dropdown |
 | 2026-10-07 | **Operator demo mode** — full layout without PIN; Sign in with PIN for real actions |
+| 2026-10-07 | **Slice A** — student waiting list number-only; operator waiting + history rows richer (joined/called/country) |
+| 2026-10-07 | **Slice B** — operator "Mark served" (clears nowServing + service sample, works empty or with waiting); DO tests |
+| 2026-10-07 | **Slice C** — board names privacy default off + operator toggle · join toast ETA · Guide rate-limits |
+| 2026-10-07 | Student waiting list follows board names gate · SSE reconnect fix · Management Pack draft (lecturer template) |

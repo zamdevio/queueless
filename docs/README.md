@@ -4,7 +4,7 @@ Public / product documentation.
 
 | Area | Path |
 |------|------|
-| Course | [`course/`](./course/) — Assignment 1 idea proposal |
+| Course | [`course/`](./course/) — Assignment 1 idea proposal · [Management Pack](./course/management-pack.md) |
 | Product | [`product/`](./product/) — purpose, scope, policies |
 | Architecture | [`architecture/`](./architecture/) — intended design |
 

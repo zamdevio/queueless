@@ -11,7 +11,7 @@
 
 | Change | Detail |
 |--------|--------|
-| Student waiting list | Show **ticket number only** (no display name) |
+| Student waiting list | Follow board privacy gate: **numbers by default**; show names only when operator `showNamesOnBoard` is on |
 | Operator waiting rows | Rich: number, name, join time, country/city, UA hint |
 | Operator history | Richer: `# · name · joined · called · state · country` |
 | Export CSV/JSON/MD | Already includes name + meta; keep as-is |
@@ -60,9 +60,12 @@ Fields already on ticket: `name`, `createdAt`, `calledAt`, `meta.{country,city,u
 
 ## Next task
 
-1. Slice A: student list number-only + operator history richer
-2. **Slice B: operator "Mark served" for current now-serving ticket** (empty queue **and** when next tickets exist but current not marked done)
+**Build order (user-confirmed 2026-10-07):**
+
+1. **Slice A** (shipped): student waiting list + operator history richer — student list follows board names gate; history `# · name · joined · called · state · country`
+2. Slice B: operator "Mark served" for current now-serving ticket (empty queue **and** when next tickets exist but current not marked done)
 3. Slice C: board name toggle + join toast ETA + Guide limits section
 4. Then Management Pack (course deliverable)
+5. Deploy polish: worker `/` hides ALLOWED_ORIGINS
 
 Promote one add-on at a time via `maintainer/phases/focus.md`.
