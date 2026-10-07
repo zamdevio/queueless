@@ -39,7 +39,7 @@ export type Board = {
   tickets: Ticket[];
   nowServing: number | null;
   nextNumber: number;
-  settings?: { maxWaiting: number };
+  settings?: { maxWaiting: number; showNamesOnBoard?: boolean };
   waitingCount?: number;
   stats?: QueueStats;
   byIp?: Record<string, { ticketId: string; number: number }[]>;
@@ -261,11 +261,15 @@ export async function resetQueue(queueId: string): Promise<void> {
   await apiFetch(`/api/queue/${queueId}/reset`, { method: "POST" });
 }
 
-export async function updateQueueSettings(queueId: string, maxWaiting: number): Promise<void> {
+export async function updateQueueSettings(
+  queueId: string,
+  maxWaiting: number,
+  showNamesOnBoard?: boolean
+): Promise<void> {
   await apiFetch(`/api/queue/${queueId}/settings`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ maxWaiting }),
+    body: JSON.stringify({ maxWaiting, showNamesOnBoard }),
   });
 }
 
@@ -368,7 +372,13 @@ export function applyEvent(prev: Board | null, event: QueueEvent): Board | null 
     case "serve":
       return {
         ...prev,
-        waitingCount: Math.max((prev.waitingCount ?? 1) - 1, 0),
+        nowServing:
+          event.data.nowServing !== undefined ? event.data.nowServing : prev.nowServing,
+        waitingCount:
+          typeof event.data.waitingCount === "number"
+            ? event.data.waitingCount
+            : Math.max((prev.waitingCount ?? 1) - 1, 0),
+        stats: event.data.stats ?? prev.stats,
         tickets: prev.tickets.map((t) =>
           t.id === event.data.ticketId ? { ...t, state: "served" as const } : t
         ),
@@ -427,4 +437,14 @@ export function formatEtaMs(ms: number | null | undefined): string | null {
   const hours = Math.floor(minutes / 60);
   const rem = Math.round(minutes % 60);
   return `~${hours}h${rem ? ` ${rem}m` : ""}`;
+}
+
+/** Compact local clock time for operator lists (e.g. "09:41"; "10-06 09:41" when not today). */
+export function formatClockTime(ts: number | null | undefined): string | null {
+  if (ts == null || !Number.isFinite(ts)) return null;
+  const d = new Date(ts);
+  const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  if (new Date().toDateString() === d.toDateString()) return time;
+  const md = `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return `${md} ${time}`;
 }

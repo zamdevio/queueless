@@ -10,9 +10,11 @@ import {
   applyEvent,
   exportQueueHistory,
   downloadExport,
+  markServed,
   errMessage,
   errRetryable,
   isUnauthorized,
+  formatClockTime,
   type Board,
   type Ticket,
   type QueueEvent,
@@ -40,6 +42,7 @@ export function OperatorView({ queueId }: { queueId: string }) {
   const [error, setError] = useState<{ message: string; retryable: boolean } | null>(null);
   const [loading, setLoading] = useState(true);
   const [maxInput, setMaxInput] = useState("");
+  const [showNamesOnBoard, setShowNamesOnBoard] = useState(false);
   const [confirm, setConfirm] = useState<ConfirmState | null>(null);
   /** Locks mutating actions while a request is in flight. */
   const [busy, setBusy] = useState(false);
@@ -63,6 +66,7 @@ export function OperatorView({ queueId }: { queueId: string }) {
       const boardData = await getBoard(queueId);
       setBoard(boardData);
       setMaxInput(String(boardData.settings?.maxWaiting ?? 50));
+      setShowNamesOnBoard(boardData.settings?.showNamesOnBoard === true);
     } catch (err) {
       if (handleAuthFailure(err)) {
         setLoading(false);
@@ -88,6 +92,7 @@ export function OperatorView({ queueId }: { queueId: string }) {
         setBoard((prev) => applyEvent(prev, event));
         if (event.event === "settings") {
           setMaxInput(String(event.data?.maxWaiting ?? ""));
+          setShowNamesOnBoard(event.data?.showNamesOnBoard === true);
         }
       });
     }
@@ -122,6 +127,20 @@ export function OperatorView({ queueId }: { queueId: string }) {
     }
   }
 
+  /** Operator marks the current now-serving ticket done (queue may be empty after). */
+  async function handleMarkServed() {
+    if (busy || !currentCalled) return;
+    setBusy(true);
+    try {
+      await markServed(queueId, currentCalled.id);
+      toast.success(`Ticket #${currentCalled.number} marked served`);
+    } catch (err) {
+      reportError(err);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleSettings() {
     if (busy) return;
     const max = Number(maxInput);
@@ -138,8 +157,12 @@ export function OperatorView({ queueId }: { queueId: string }) {
     }
     setBusy(true);
     try {
-      await updateQueueSettings(queueId, max);
-      toast.success(`Queue limit set to ${max}`);
+      await updateQueueSettings(queueId, max, showNamesOnBoard);
+      toast.success(
+        showNamesOnBoard
+          ? `Queue limit set to ${max} · names visible on board`
+          : `Queue limit set to ${max} · board shows numbers only`
+      );
     } catch (err) {
       reportError(err);
     } finally {
@@ -211,6 +234,9 @@ export function OperatorView({ queueId }: { queueId: string }) {
   const waitingTickets = tickets.filter((t) => t.state === "waiting");
   const historyTickets = tickets.filter((t) => t.state !== "waiting");
   const nowServing = board?.nowServing ?? null;
+  /** The ticket currently on the counter — target of "Mark served". */
+  const currentCalled =
+    tickets.find((t) => t.number === nowServing && t.state === "called") ?? null;
   const maxWaiting = board?.settings?.maxWaiting ?? 50;
   const waitingCount = board?.waitingCount ?? waitingTickets.length;
   const stats = board?.stats;
@@ -261,6 +287,15 @@ export function OperatorView({ queueId }: { queueId: string }) {
               >
                 {busy ? "Working…" : `Call next (${waitingCount})`}
               </button>
+              {currentCalled && (
+                <button
+                  className="btn-secondary ops-hero-btn"
+                  onClick={handleMarkServed}
+                  disabled={busy}
+                >
+                  Mark served #{currentCalled.number}
+                </button>
+              )}
               <button
                 className="btn-secondary ops-hero-btn"
                 onClick={() => {
@@ -297,6 +332,7 @@ export function OperatorView({ queueId }: { queueId: string }) {
                         </span>
                         <span className="ticket-meta">
                           {[
+                            formatClockTime(t.createdAt) ? `joined ${formatClockTime(t.createdAt)}` : null,
                             t.meta?.country,
                             t.meta?.city,
                             t.meta?.language,
@@ -349,9 +385,22 @@ export function OperatorView({ queueId }: { queueId: string }) {
               {(pageItems) => (
                 <ul>
                   {pageItems.map((t) => (
-                    <li key={t.id} className={t.state}>
-                      #{t.number}
-                      {t.name ? ` · ${t.name}` : ""} — {t.state}
+                    <li key={t.id} className={`history-row ${t.state}`}>
+                      <div className="ticket-row">
+                        <span className="ticket-num">
+                          #{t.number}
+                          {t.name ? ` · ${t.name}` : ""} · {t.state}
+                        </span>
+                        <span className="ticket-meta">
+                          {[
+                            formatClockTime(t.createdAt) ? `joined ${formatClockTime(t.createdAt)}` : null,
+                            t.calledAt ? `called ${formatClockTime(t.calledAt)}` : null,
+                            t.meta?.country,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ") || "—"}
+                        </span>
+                      </div>
                     </li>
                   ))}
                   {historyTickets.length === 0 && <li className="empty-row">No history yet</li>}
@@ -427,13 +476,25 @@ export function OperatorView({ queueId }: { queueId: string }) {
                 onChange={(e) => setMaxInput(e.target.value)}
               />
             </label>
+            <label className="ops-setting-row" htmlFor="showNamesOnBoard">
+              Show names on board
+              <input
+                id="showNamesOnBoard"
+                type="checkbox"
+                checked={showNamesOnBoard}
+                onChange={(e) => setShowNamesOnBoard(e.target.checked)}
+              />
+            </label>
+            <p className="ops-setting-hint">
+              Off by default — public board shows ticket numbers only.
+            </p>
             <button
               type="button"
               className="btn-primary ops-save"
               onClick={handleSettings}
               disabled={busy}
             >
-              {busy ? "Saving…" : "Save limit"}
+              {busy ? "Saving…" : "Save settings"}
             </button>
 
             <div className="ops-export-block">

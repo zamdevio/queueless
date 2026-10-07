@@ -52,6 +52,8 @@ export function BoardView({ queueId }: { queueId: string }) {
 
   const waiting = (board?.tickets || []).filter((t) => t.state === "waiting");
   const nowServing = board?.nowServing ?? null;
+  /** Privacy default: numbers only unless the operator enables names on the board. */
+  const showNames = board?.settings?.showNamesOnBoard === true;
 
   return (
     <div className="board-view">
@@ -69,14 +71,17 @@ export function BoardView({ queueId }: { queueId: string }) {
           {waiting.map((t) => (
             <div key={t.id} className="board-ticket">
               <span className="board-ticket-num">#{t.number}</span>
-              {t.name && <span className="board-ticket-name">{t.name}</span>}
+              {showNames && t.name && <span className="board-ticket-name">{t.name}</span>}
             </div>
           ))}
           {waiting.length === 0 && <p className="empty-row">No one waiting</p>}
         </div>
       </div>
 
-      <div className="board-footer">{waiting.length} waiting · updated live</div>
+      <div className="board-footer">
+        {waiting.length} waiting · updated live
+        {showNames ? " · names on" : " · numbers only"}
+      </div>
     </div>
   );
 }

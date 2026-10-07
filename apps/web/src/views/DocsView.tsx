@@ -71,6 +71,27 @@ function GuidePage() {
         </p>
       </Section>
 
+      <Section title="Rate limits">
+        <p>
+          QueueLess rate-limits abuse per IP address (rolling 60-second window) via a
+          dedicated Rate Limit Durable Object:
+        </p>
+        <ul>
+          <li>
+            <strong>Operator login:</strong> 10 attempts / minute / IP — further attempts
+            get <code>429</code> with <code>Retry-After</code>.
+          </li>
+          <li>
+            <strong>Join queue:</strong> 5 joins / minute / IP / queue — protects a single
+            queue from spam joins on one network.
+          </li>
+        </ul>
+        <p>
+          Operator mutations (call next, skip, remove, serve, reset, settings, export) are
+          PIN/session-gated and not rate-limited beyond login.
+        </p>
+      </Section>
+
       <Section title="CORS — why the backend might not work from this site">
         <p>
           Browsers enforce a <strong>Cross-Origin Resource Sharing (CORS)</strong>{" "}

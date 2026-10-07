@@ -24,6 +24,11 @@ export interface Ticket {
 
 export interface QueueSettings {
   maxWaiting: number;
+  /**
+   * Public board shows display names only when the operator enables this.
+   * Default false — numbers only (privacy).
+   */
+  showNamesOnBoard: boolean;
 }
 
 export interface QueueStats {
@@ -61,12 +66,16 @@ export interface QueueEvent {
 
 const DEFAULT_MAX_WAITING = 50;
 const ETA_SAMPLE_WINDOW = 20;
+const DEFAULT_SHOW_NAMES_ON_BOARD = false;
 
 export class QueueDO extends DurableObject {
   private tickets = new Map<string, Ticket>();
   private nowServing: number | null = null;
   private nextNumber = 1;
-  private settings: QueueSettings = { maxWaiting: DEFAULT_MAX_WAITING };
+  private settings: QueueSettings = {
+    maxWaiting: DEFAULT_MAX_WAITING,
+    showNamesOnBoard: DEFAULT_SHOW_NAMES_ON_BOARD,
+  };
   private serviceSamples: number[] = [];
   private lastServiceMs: number | null = null;
   private subscribers = new Set<WritableStreamDefaultWriter<Uint8Array>>();
@@ -81,7 +90,10 @@ export class QueueDO extends DurableObject {
           this.tickets = new Map(data.tickets || []);
           this.nowServing = data.nowServing ?? null;
           this.nextNumber = data.nextNumber ?? 1;
-          this.settings = { maxWaiting: data.settings?.maxWaiting ?? DEFAULT_MAX_WAITING };
+          this.settings = {
+            maxWaiting: data.settings?.maxWaiting ?? DEFAULT_MAX_WAITING,
+            showNamesOnBoard: data.settings?.showNamesOnBoard ?? DEFAULT_SHOW_NAMES_ON_BOARD,
+          };
           this.serviceSamples = Array.isArray(data.serviceSamples) ? data.serviceSamples : [];
           this.lastServiceMs = typeof data.lastServiceMs === "number" ? data.lastServiceMs : null;
         }
@@ -202,16 +214,18 @@ export class QueueDO extends DurableObject {
             return this.handleReset();
           case "settings": {
             let max = DEFAULT_MAX_WAITING;
+            let showNamesOnBoard: boolean | undefined;
             try {
-              const body = await request.json<{ maxWaiting?: number }>();
+              const body = await request.json<{ maxWaiting?: number; showNamesOnBoard?: boolean }>();
               max = Number(body?.maxWaiting);
+              showNamesOnBoard = body?.showNamesOnBoard;
             } catch {
               return new Response(JSON.stringify({ error: "Invalid settings body" }), { status: 400 });
             }
             if (!Number.isFinite(max) || max < 0 || max > 10_000) {
               return new Response(JSON.stringify({ error: "maxWaiting must be 0–10000" }), { status: 400 });
             }
-            return this.handleSettings(Math.floor(max));
+            return this.handleSettings(Math.floor(max), showNamesOnBoard);
           }
           default:
             return new Response(JSON.stringify({ error: "Unknown action" }), { status: 404 });
@@ -413,7 +427,9 @@ export class QueueDO extends DurableObject {
     return Response.json({ ok: true });
   }
 
-  /** Customer acknowledges they were served — frees the device to join again. */
+  /** Marks a ticket served. When it is the current now-serving ticket (operator
+   *  "Mark served" or customer self-serve), records the service sample and
+   *  clears `nowServing` — works with an empty queue or with waiting tickets. */
   private async handleServe(ticketId: string): Promise<Response> {
     const ticket = this.tickets.get(ticketId);
     if (!ticket) {
@@ -425,9 +441,25 @@ export class QueueDO extends DurableObject {
         { status: 409 }
       );
     }
+    const now = Date.now();
+    if (this.nowServing === ticket.number) {
+      if (ticket.calledAt != null) {
+        this.pushServiceSample(now - ticket.calledAt);
+      }
+      this.nowServing = null;
+    }
     ticket.state = "served";
     await this.persist();
-    this.broadcast({ event: "serve", data: { ticketId, number: ticket.number } });
+    this.broadcast({
+      event: "serve",
+      data: {
+        ticketId,
+        number: ticket.number,
+        nowServing: this.nowServing,
+        waitingCount: this.waitingCount(),
+        stats: this.stats(),
+      },
+    });
     return Response.json({ ok: true });
   }
 
@@ -453,8 +485,14 @@ export class QueueDO extends DurableObject {
     return Response.json({ ok: true });
   }
 
-  private async handleSettings(maxWaiting: number): Promise<Response> {
+  private async handleSettings(
+    maxWaiting: number,
+    showNamesOnBoard?: boolean
+  ): Promise<Response> {
     this.settings.maxWaiting = maxWaiting;
+    if (typeof showNamesOnBoard === "boolean") {
+      this.settings.showNamesOnBoard = showNamesOnBoard;
+    }
     await this.persist();
     this.broadcast({ event: "settings", data: { ...this.settings } });
     return Response.json({ ok: true, settings: this.settings });

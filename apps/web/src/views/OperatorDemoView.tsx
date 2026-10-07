@@ -3,6 +3,7 @@ import {
   getBoard,
   subscribeToQueue,
   applyEvent,
+  formatClockTime,
   type Board,
   type Ticket,
   type QueueEvent,
@@ -43,11 +44,14 @@ export function OperatorDemoView({
   const [board, setBoard] = useState<Board | null>(null);
   const [confirm, setConfirm] = useState<{ kind: string; number?: number } | null>(null);
   const [maxInput, setMaxInput] = useState("50");
+  const [showNamesOnBoard, setShowNamesOnBoard] = useState(false);
 
   const load = useCallback(async () => {
     try {
       const data = await getBoard(queueId);
       setBoard(data);
+      setMaxInput(String(data.settings?.maxWaiting ?? 50));
+      setShowNamesOnBoard(data.settings?.showNamesOnBoard === true);
     } catch {
       setBoard(DEMO_BOARD);
     }
@@ -84,6 +88,8 @@ export function OperatorDemoView({
   const waitingTickets = tickets.filter((t) => t.state === "waiting");
   const historyTickets = tickets.filter((t) => t.state !== "waiting");
   const nowServing = board?.nowServing ?? DEMO_BOARD.nowServing;
+  const currentCalled =
+    tickets.find((t) => t.number === nowServing && t.state === "called") ?? null;
   const maxWaiting = board?.settings?.maxWaiting ?? 50;
   const waitingCount = board?.waitingCount ?? waitingTickets.length;
   const stats = board?.stats ?? DEMO_BOARD.stats;
@@ -108,6 +114,11 @@ export function OperatorDemoView({
               <button className="btn-primary ops-hero-btn" onClick={demoAction}>
                 Call next ({waitingCount})
               </button>
+              {currentCalled && (
+                <button className="btn-secondary ops-hero-btn" onClick={demoAction}>
+                  Mark served #{currentCalled.number}
+                </button>
+              )}
               <button
                 className="btn-secondary ops-hero-btn"
                 onClick={() => setConfirm({ kind: "reset" })}
@@ -135,7 +146,13 @@ export function OperatorDemoView({
                           {t.name ? ` · ${t.name}` : ""}
                         </span>
                         <span className="ticket-meta">
-                          {[t.meta?.country, t.meta?.city].filter(Boolean).join(" · ") || "—"}
+                          {[
+                            formatClockTime(t.createdAt) ? `joined ${formatClockTime(t.createdAt)}` : null,
+                            t.meta?.country,
+                            t.meta?.city,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ") || "—"}
                         </span>
                       </div>
                       <div className="actions">
@@ -160,17 +177,30 @@ export function OperatorDemoView({
               <span className="queue-list-count">{historyTickets.length}</span>
             </div>
             <Pagination items={historyTickets} searchKeys={["name"]} sortKey="number" sortDir="desc" label="history">
-              {(pageItems) => (
-                <ul>
-                  {pageItems.map((t) => (
-                    <li key={t.id} className={t.state}>
+          {(pageItems) => (
+            <ul>
+              {pageItems.map((t) => (
+                <li key={t.id} className={`history-row ${t.state}`}>
+                  <div className="ticket-row">
+                    <span className="ticket-num">
                       #{t.number}
-                      {t.name ? ` · ${t.name}` : ""} — {t.state}
-                    </li>
-                  ))}
-                  {historyTickets.length === 0 && <li className="empty-row">No history yet</li>}
-                </ul>
-              )}
+                      {t.name ? ` · ${t.name}` : ""} · {t.state}
+                    </span>
+                    <span className="ticket-meta">
+                      {[
+                        formatClockTime(t.createdAt) ? `joined ${formatClockTime(t.createdAt)}` : null,
+                        t.calledAt ? `called ${formatClockTime(t.calledAt)}` : null,
+                        t.meta?.country,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ") || "—"}
+                    </span>
+                  </div>
+                </li>
+              ))}
+              {historyTickets.length === 0 && <li className="empty-row">No history yet</li>}
+            </ul>
+          )}
             </Pagination>
           </div>
         </div>
@@ -238,8 +268,20 @@ export function OperatorDemoView({
                 onChange={(e) => setMaxInput(e.target.value)}
               />
             </label>
+            <label className="ops-setting-row" htmlFor="demoShowNames">
+              Show names on board
+              <input
+                id="demoShowNames"
+                type="checkbox"
+                checked={showNamesOnBoard}
+                onChange={(e) => setShowNamesOnBoard(e.target.checked)}
+              />
+            </label>
+            <p className="ops-setting-hint">
+              Off by default — public board shows ticket numbers only.
+            </p>
             <button type="button" className="btn-primary ops-save" onClick={demoAction}>
-              Save limit
+              Save settings
             </button>
 
             <div className="ops-export-block">

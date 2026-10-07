@@ -34,16 +34,18 @@ export function StudentView({ queueId }: { queueId: string }) {
   const [servingBusy, setServingBusy] = useState(false);
   const calledRef = useRef(false);
 
-  const loadBoard = useCallback(async () => {
+  const loadBoard = useCallback(async (): Promise<Board | null> => {
     try {
       const boardData = await getBoard(queueId);
       setBoard(boardData);
       setError(null);
+      return boardData;
     } catch (err) {
       setError({
         message: errMessage(err, "Failed to load queue."),
         retryable: errRetryable(err),
       });
+      return null;
     } finally {
       setLoading(false);
     }
@@ -69,8 +71,16 @@ export function StudentView({ queueId }: { queueId: string }) {
   }, [queueId, loadBoard]);
 
   // SSE — board + immediate ticket state (called / skip / remove asap)
+  // Deps MUST stay [queueId] only. `ticket` in deps closed the EventSource and
+  // opened a new one on every ticket identity change; each connect sends a
+  // snapshot, and the snapshot handler used to always allocate a new ticket
+  // object → infinite resubscribe loop (1k+ /stream requests).
+  const ticketRef = useRef<Ticket | null>(null);
   useEffect(() => {
-    let disposed = false;
+    ticketRef.current = ticket;
+  }, [ticket]);
+
+  useEffect(() => {
     let evtSource: EventSource | null = null;
 
     evtSource = subscribeToQueue(queueId, (event: QueueEvent) => {
@@ -79,7 +89,15 @@ export function StudentView({ queueId }: { queueId: string }) {
         setTicket((prev) => {
           if (!prev) return prev;
           const match = (event.data?.tickets || []).find((t: Ticket) => t.id === prev.id);
-          return match ? { ...prev, ...match } : prev;
+          if (!match) return prev;
+          // Identity-stable: only allocate a new object when fields actually changed
+          const changed =
+            match.number !== prev.number ||
+            match.state !== prev.state ||
+            match.calledAt !== prev.calledAt ||
+            match.name !== prev.name ||
+            match.createdAt !== prev.createdAt;
+          return changed ? { ...prev, ...match } : prev;
         });
         return;
       }
@@ -89,16 +107,19 @@ export function StudentView({ queueId }: { queueId: string }) {
       // Keep my ticket state in sync immediately (no reload needed)
       if (event.event === "call" && event.data?.ticketId) {
         setTicket((prev) => {
-          if (prev && prev.id === event.data.ticketId) {
-            return {
-              ...prev,
-              state: "called" as const,
-              calledAt: event.data.calledAt ?? Date.now(),
-            };
-          }
-          return prev;
+          if (!prev || prev.id !== event.data.ticketId) return prev;
+          if (prev.state === "called") return prev;
+          return {
+            ...prev,
+            state: "called" as const,
+            calledAt: event.data.calledAt ?? Date.now(),
+          };
         });
-        if (ticket && event.data.ticketId === ticket.id && !calledRef.current) {
+        if (
+          ticketRef.current &&
+          event.data.ticketId === ticketRef.current.id &&
+          !calledRef.current
+        ) {
           calledRef.current = true;
           setCalledOpen(true);
         }
@@ -109,18 +130,21 @@ export function StudentView({ queueId }: { queueId: string }) {
         event.data?.ticketId
       ) {
         setTicket((prev) => {
-          if (prev && prev.id === event.data.ticketId) {
-            const state =
-              event.event === "skip"
-                ? ("skipped" as const)
-                : event.event === "remove"
-                  ? ("removed" as const)
-                  : ("served" as const);
-            return { ...prev, state };
-          }
-          return prev;
+          if (!prev || prev.id !== event.data.ticketId) return prev;
+          const state =
+            event.event === "skip"
+              ? ("skipped" as const)
+              : event.event === "remove"
+                ? ("removed" as const)
+                : ("served" as const);
+          if (prev.state === state) return prev;
+          return { ...prev, state };
         });
-        if (event.event === "serve" && ticket && event.data.ticketId === ticket.id) {
+        if (
+          event.event === "serve" &&
+          ticketRef.current &&
+          event.data.ticketId === ticketRef.current.id
+        ) {
           setTicket(null);
           calledRef.current = false;
         }
@@ -128,10 +152,9 @@ export function StudentView({ queueId }: { queueId: string }) {
     });
 
     return () => {
-      disposed = true;
       evtSource?.close();
     };
-  }, [queueId, ticket]);
+  }, [queueId]);
 
   const join = useCallback(async () => {
     setJoining(true);
@@ -145,12 +168,20 @@ export function StudentView({ queueId }: { queueId: string }) {
       };
       const newTicket = await joinQueue(queueId, meta, displayName || undefined, deviceId);
       setTicket(newTicket);
+      const boardData = await loadBoard();
       if (newTicket.duplicateFromSameIp) {
         toast.warning("This network already has a waiting ticket — staff may see two.");
       } else {
-        toast.success(`Joined — ticket #${newTicket.number}`);
+        const waiting = (boardData?.tickets ?? []).filter((t) => t.state === "waiting");
+        const pos = waiting.findIndex((t) => t.id === newTicket.id) + 1;
+        const avg = boardData?.stats?.avgServiceMs;
+        const eta = pos > 0 && avg ? formatEtaMs(pos * avg) : null;
+        toast.success(
+          eta
+            ? `Joined — ticket #${newTicket.number} · est. wait ${eta}`
+            : `Joined — ticket #${newTicket.number}`
+        );
       }
-      await loadBoard();
     } catch (err) {
       const msg = errMessage(err, "Failed to join.");
       // device already in queue — restore existing
@@ -236,6 +267,8 @@ export function StudentView({ queueId }: { queueId: string }) {
   const maxWaiting = board?.settings?.maxWaiting ?? 50;
   const waitingCount = board?.waitingCount ?? waitingTickets.length;
   const stats = board?.stats;
+  /** Same privacy gate as `/board/:id` — names only when the operator enables them. */
+  const showNames = board?.settings?.showNamesOnBoard === true;
 
   const position = ticket
     ? waitingTickets.findIndex((t) => t.id === ticket.id) + 1
@@ -398,7 +431,7 @@ export function StudentView({ queueId }: { queueId: string }) {
         </div>
         <Pagination
           items={waitingTickets}
-          searchKeys={["name"]}
+          searchKeys={showNames ? ["number", "name"] : ["number"]}
           sortKey="number"
           label="tickets"
         >
@@ -408,7 +441,7 @@ export function StudentView({ queueId }: { queueId: string }) {
                 <li key={t.id} className={ticket && t.id === ticket.id ? "self" : ""}>
                   <span>
                     #{t.number}
-                    {t.name ? ` · ${t.name}` : ""}
+                    {showNames && t.name ? ` · ${t.name}` : ""}
                     {ticket && t.id === ticket.id ? " (you)" : ""}
                   </span>
                 </li>
